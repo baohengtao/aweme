@@ -1,0 +1,7 @@
+node_modules
+*.pyc
+*.ipynb
+package-lock.json
+.env
+
+/archive
