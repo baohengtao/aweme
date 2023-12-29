@@ -1,90 +1,24 @@
 import requests
 
-DICT_CMP = {'apple_account': 0,
-            'aweme_count_correction_threshold': -1,
-            'can_set_item_cover': False,
-            'can_show_group_card': 0,
-            'close_friend_type': 0,
-            'commerce_info': {'challenge_list': None,
-                              'head_image_list': None,
-                              'offline_info_list': [],
-                              'smart_phone_list': None,
-                              'task_list': None},
-            'commerce_user_info': {'ad_revenue_rits': None, 'has_ads_entry': True},
-            'commerce_user_level': 0,
-            'enterprise_user_info': '{"commerce_info":{"offline_info_list":[],"challenge_list":null,"task_list":null,"head_image_list":null,"smart_phone_list":null},"homepage_bottom_toast":null,"tab_ceiling_toast":null,"limiters":null,"attic_info":null,"profile_edit_button":null,"elite_center":null,"enterprise_card_visibility":false,"blue_label_edit_jump_url":"aweme://webview/?url=https%3A%2F%2Fapi.amemv.com%2Finsights%2Flite%2FcontactSetting%3Fhide_nav_bar%3D1%26title%3D%25E8%2581%2594%25E7%25B3%25BB%25E6%2596%25B9%25E5%25BC%258F%26enter_from%3Dcustomized_tab&hide_nav_bar=1&title=%E8%81%94%E7%B3%BB%E6%96%B9%E5%BC%8F&rn_schema=aweme%3A%2F%2Freactnative%2F%3Fchannel_name%3Drn_patch%26bundle_name%3Dbusiness%26module_name%3Dpage_e_lite_contactSetting%26force_h5%3D1%26hide_nav_bar%3D1%26bundle_url%3D%26title%3D%25E8%2581%2594%25E7%25B3%25BB%25E6%2596%25B9%25E5%25BC%258F%26enter_from%3Dcustomized_tab"}',
-            'general_permission': {'following_follower_list_toast': 1},
-            'has_e_account_role': False,
-            'has_subscription': False,
-            'image_send_exempt': False,
-            'ins_id': '',
-            'is_ban': False,
-            'is_block': False,
-            'is_blocked': False,
-            'is_effect_artist': False,
-            'is_gov_media_vip': False,
-            'is_mix_user': False,
-            'is_not_show': False,
-            'is_series_user': False,
-            'is_sharing_profile_user': 0,
-            'is_star': False,
-            'is_top': 0,
-            'life_story_block': {'life_story_block': False},
-            'live_commerce': False,
-            'live_status': 0,
-            'original_musician': {'digg_count': 0,
-                                  'music_count': 0,
-                                  'music_used_count': 0},
-            'pigeon_daren_status': '',
-            'pigeon_daren_warn_tag': '',
-            'profile_tab_type': 0,
-            'public_collects_count': 0,
-            'r_fans_group_info': {},
-            'recommend_reason_relation': '',
-            'recommend_user_reason_source': 0,
-            'risk_notice_text': '',
-            'room_id': 0,
-            'secret': 0,
-            'series_count': 0,
-            'short_id': '0',
-            'signature_display_lines': 0,
-            'special_follow_status': 0,
-            'sync_to_toutiao': 0,
-            'tab_settings': {'private_tab': {'private_tab_style': 1,
-                                             'show_private_tab': False}},
-            'total_favorited_correction_threshold': -1,
-            'twitter_id': '',
-            'twitter_name': '',
-            'urge_detail': {'user_urged': 0},
-            'verification_type': 0,
-            'video_cover': {},
-            'video_icon': {'height': 720, 'uri': '', 'url_list': [], 'width': 720},
-            'watch_status': False,
-            'with_commerce_enterprise_tab_entry': False,
-            'with_commerce_entry': False,
-            'with_fusion_shop_entry': False,
-            'with_new_goods': False,
-            'youtube_channel_id': '',
-            'enable_ai_double': 0,
-            'enable_wish': False,
-            'enterprise_verify_reason': '',
-            'favorite_permission': 1,
-            'custom_verify': '',
-            'dynamic_cover': {},
-            'is_activity_user': False,
-            'mix_count': 0,
-            'new_friend_type': 0,
-            'follower_request_status': 0,
-            'follower_status': 0,
-            'birthday_hide_level': 0,
-            'dongtai_count': 0,
-            'follow_status': 1,
-            'message_chat_entry': True,
-            'user_not_see': 0,
-            'user_not_show': 1,
-            'show_subscription': False,
+from aweme.fetcher import fetcher
+from aweme.helper import DICT_CMP_USER
 
-            'youtube_channel_title': ''}
+
+def get_user(user_id: int | str, parse=True):
+    params = {
+        'aid': '6383',
+        'version_code': '170400',
+    }
+
+    if isinstance(user_id, int) or user_id.isdigit():
+        params['user_id'] = user_id
+    else:
+        sec_user_id = user_id.split('?')[0].split('/')[-1]
+        params['sec_user_id'] = sec_user_id
+
+    url = "https://www.douyin.com/aweme/v1/web/user/profile/other/"
+    response = fetcher.get(url, params=params)
+    return parse_user(response) if parse else response
 
 
 def parse_user(r: requests.Response):
@@ -129,18 +63,23 @@ def parse_user(r: requests.Response):
     assert 'id' not in user
     user['id'] = int(user.pop('uid'))
 
-    for k, v in DICT_CMP.items():
+    # process homepage
+    assert 'homepage' not in user
+    user['homepage'] = f'https://douyin.com/user/{user["sec_uid"]}'
+
+    for k, v in DICT_CMP_USER.items():
         assert user.pop(k) == v
     reorder = [
         'id', 'sec_uid', 'unique_id', 'nickname',  'signature', 'school_name',
         'age', 'gender', 'following_count', 'follower_count',
         'max_follower_count', 'aweme_count', 'forward_count',
         'favoriting_count', 'total_favorited', 'show_favorite_list',
-        'city',  'district', 'ip', 'country', 'iso_country_code', 'avatar',
-        'signature_language', 'im_primary_role_id', 'im_role_ids', 'publish_landing_tab'
+        'city',  'district', 'ip', 'country', 'iso_country_code', 'homepage',
+        'avatar', 'signature_language', 'im_primary_role_id', 'im_role_ids',
+        'publish_landing_tab'
     ]
     user1 = {k: user[k] for k in reorder if k in user}
     user2 = {k: user[k] for k in user if k not in reorder}
     user = user1 | user2
 
-    return user
+    return {k: v for k, v in user.items() if v not in [None, '', []]}
