@@ -46,7 +46,7 @@ class User(BaseModel):
     id = BigIntegerField(primary_key=True)
     sec_uid = CharField(unique=True)
     unique_id = CharField(unique=True)
-    username = CharField(unique=True)
+    username = CharField()
     nickname = CharField()
     signature = CharField(null=True)
     school_name = CharField(null=True)
