@@ -85,6 +85,13 @@ class User(BaseModel):
     can_show_group_card = IntegerField()
     verification_type = IntegerField(null=True)
     custom_verify = CharField(null=True)
+    douplus_user_type = IntegerField(null=True)
+    mix_count = IntegerField()
+    secret = IntegerField()
+    new_friend_type = IntegerField()
+    follower_status = IntegerField()
+    follow_status = IntegerField()
+    account_info_url = TextField(null=True)
 
     @classmethod
     def from_id(cls, user_id: str | int, update=False) -> Self:
@@ -113,6 +120,9 @@ class User(BaseModel):
         model_dict = model_to_dict(model)
         for k, v in user_dict.items():
             assert v or v == 0
+            if k in ['follower_count', 'max_follower_count',
+                     'mplatform_followers_count', 'total_favorited',]:
+                continue
             if v == model_dict[k]:
                 continue
             console.log(f'+{k}: {v}', style='green bold on dark_green')

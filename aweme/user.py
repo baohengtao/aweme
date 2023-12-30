@@ -67,8 +67,6 @@ def parse_user(r: requests.Response):
         assert user['unique_id'] == ''
         assert short_id.isdigit()
         user['unique_id'] = short_id
-    else:
-        assert not user['unique_id'].isdigit()
 
     # process ip_location
     if ip := user.pop('ip_location', None):
@@ -93,7 +91,6 @@ def parse_user(r: requests.Response):
     assert 'homepage' not in user
     user['homepage'] = f'https://douyin.com/user/{user["sec_uid"]}'
 
-    #  'general_permission': {'following_follower_list_toast': 1},
     if (d := user.pop('general_permission', None)):
         assert d == {'following_follower_list_toast': 1}
         follow_list_toast = 1
@@ -101,6 +98,22 @@ def parse_user(r: requests.Response):
         follow_list_toast = 0
     assert 'follow_list_toast' not in user
     user['follow_list_toast'] = follow_list_toast
+
+    if (u := user.pop('user_permissions', None)):
+        assert u == [{'key': 'douplus_user_type', 'value': '1'}]
+        assert 'douplus_user_type' not in user
+        user['douplus_user_type'] = 1
+
+    # process living
+    if (lstatus := user.pop('live_status')) == 0:
+        assert user.pop('room_id') == 0
+    else:
+        assert lstatus == 1
+        assert user.pop('room_id') > 0
+        assert user.pop('room_data')
+        console.log('🎀 find living: '
+                    f'[link={user["homepage"]}]{user["nickname"]}[/link]',
+                    style='green on dark_green')
 
     not_match = {}
     for k, v in DICT_CMP_USER.items():

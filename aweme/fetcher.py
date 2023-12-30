@@ -62,7 +62,21 @@ class Fetcher:
         url.args |= params or {}
         url.args.pop('X-Bogus', None)
         url.args['X-Bogus'] = self._get_xbogus(url.query.encode())
-        return self.session.get(url)
+
+        while True:
+            try:
+                r = self.session.get(url)
+                r.raise_for_status()
+            except (requests.exceptions.ConnectionError,
+                    requests.exceptions.HTTPError) as e:
+                period = 60
+                console.log(
+                    f"{e}: Sleepping {period} seconds and "
+                    f"retry [link={url}]{url}[/link]...", style='error')
+                time.sleep(period)
+            else:
+                assert r.status_code == 200
+                return r
 
     def _pause(self):
         self.visits += 1
