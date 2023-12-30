@@ -5,14 +5,6 @@ from aweme.fetcher import fetcher
 from aweme.helper import DICT_CMP_USER
 
 
-class UserParser:
-    def __init__(self, user_id):
-        self.response = get_user(user_id, parse=False)
-
-    def parse(self):
-        return parse_user(self.response)
-
-
 def get_user(user_id: int | str, parse=True):
     params = {
         'aid': '6383',

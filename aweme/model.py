@@ -131,6 +131,27 @@ class User(BaseModel):
         cls.update(user_dict).where(cls.id == user_id).execute()
         return cls.get_by_id(user_id)
 
+    def __str__(self):
+        model = model_to_dict(self, recurse=False)
+        for k in model.copy():
+            if k in ['with_commerce_entry',
+                     'with_fusion_shop_entry',
+                     'has_subscription',
+                     'live_commerce',
+                     'show_subscription',
+                     'show_favorite_list',
+                     ]:
+                if model[k] is False:
+                    model.pop(k)
+            elif k in ['public_collects_count', 'forward_count',
+                       'favoriting_count', 'mix_count', 'secret',
+                       'can_show_group_card', 'verification_type',
+                       'new_friend_type']:
+                if model[k] == 0:
+                    model.pop(k)
+        return "\n".join(f'{k}: {v}'.replace('\n', '  ') for k, v
+                         in model.items() if v is not None)
+
 
 database.create_tables(
     [User])
