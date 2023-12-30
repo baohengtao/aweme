@@ -48,10 +48,10 @@ class User(BaseModel):
     unique_id = CharField(unique=True)
     username = CharField(unique=True)
     nickname = CharField()
-    signature = CharField()
-    school_name = CharField()
-    age = IntegerField()
-    gender = IntegerField()
+    signature = CharField(null=True)
+    school_name = CharField(null=True)
+    age = IntegerField(null=True)
+    gender = IntegerField(null=True)
     following_count = IntegerField()
     follower_count = IntegerField()
     max_follower_count = IntegerField()
@@ -60,17 +60,31 @@ class User(BaseModel):
     favoriting_count = IntegerField()
     total_favorited = IntegerField()
     show_favorite_list = BooleanField()
+    province = CharField(null=True)
     city = CharField(null=True)
     district = CharField(null=True)
-    ip = TextField()
-    country = CharField()
-    iso_country_code = CharField()
+    ip = TextField(null=True)
+    country = CharField(null=True)
+    iso_country_code = CharField(null=True)
     homepage = TextField()
     avatar = TextField()
     signature_language = CharField()
-    im_primary_role_id = IntegerField()
-    im_role_ids = ArrayField(IntegerField)
+    im_primary_role_id = IntegerField(null=True)
+    im_role_ids = ArrayField(IntegerField, null=True)
+    role_id = CharField(null=True)
     publish_landing_tab = IntegerField()
+    follow_list_toast = IntegerField()
+    has_subscription = BooleanField()
+    live_commerce = BooleanField()
+    public_collects_count = IntegerField()
+    with_commerce_entry = BooleanField()
+    with_fusion_shop_entry = BooleanField()
+    show_subscription = BooleanField()
+    mplatform_followers_count = IntegerField()
+    is_mix_user = BooleanField()
+    can_show_group_card = IntegerField()
+    verification_type = IntegerField(null=True)
+    custom_verify = CharField(null=True)
 
     @classmethod
     def from_id(cls, user_id: str | int, update=False) -> Self:
@@ -87,6 +101,10 @@ class User(BaseModel):
     @classmethod
     def upsert(cls, user_dict: dict) -> Self:
         user_id = user_dict['id']
+        for k in (set(user_dict) - set(cls._meta.fields)):
+            console.log(
+                f'ignore unknow key=> {k}:{user_dict.pop(k)}', style='warning')
+
         if not (model := cls.get_or_none(cls.id == user_id)):
             user_dict['username'] = user_dict['nickname'].strip('-_')
             assert user_dict['username']

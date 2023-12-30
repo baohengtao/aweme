@@ -1,7 +1,16 @@
 import requests
 
+from aweme import console
 from aweme.fetcher import fetcher
 from aweme.helper import DICT_CMP_USER
+
+
+class UserParser:
+    def __init__(self, user_id):
+        self.response = get_user(user_id, parse=False)
+
+    def parse(self):
+        return parse_user(self.response)
 
 
 def get_user(user_id: int | str, parse=True):
@@ -44,21 +53,38 @@ def parse_user(r: requests.Response):
     useless_keys = [
         'share_info', 'white_cover_url',
         'cover_and_head_image_info', 'cover_url', 'cover_colour',
-        'avatar_168x168', 'avatar_300x300', 'avatar_medium', 'avatar_thumb'
+        'avatar_168x168', 'avatar_300x300', 'avatar_medium', 'avatar_thumb',
+        'signature_display_lines', 'enterprise_user_info', 'commerce_user_info'
     ]
     for key in useless_keys:
         user.pop(key)
     user.pop('signature_extra', None)
-    assert user.pop('province') in ['', None]
-    assert user.pop('mplatform_followers_count') == user['follower_count']
+    # used to display 橱窗 群聊 info etc...
+    user.pop('card_entries', None)
+
+    # process short_id
+    if (short_id := user.pop('short_id')) != '0':
+        assert user['unique_id'] == ''
+        assert short_id.isdigit()
+        user['unique_id'] = short_id
+    else:
+        assert not user['unique_id'].isdigit()
+
     # process ip_location
-    ip_location = user.pop('ip_location')
-    assert ip_location.startswith('IP属地：')
-    assert 'ip' not in user
-    user['ip'] = ip_location.removeprefix('IP属地：')
+    if ip := user.pop('ip_location', None):
+        assert ip.startswith('IP属地：')
+        assert 'ip' not in user
+        user['ip'] = ip.removeprefix('IP属地：')
     # process age
-    assert 'age' not in user
-    user['age'] = user.pop('user_age')
+    age = user.pop('user_age')
+    if (b := user.pop('birthday_hide_level')) == 1:
+        assert age == -1
+    else:
+        assert b == 0
+        assert 'age' not in user
+        if age != -1:
+            assert age > 0
+            user['age'] = age
     # process id
     assert 'id' not in user
     user['id'] = int(user.pop('uid'))
@@ -67,15 +93,35 @@ def parse_user(r: requests.Response):
     assert 'homepage' not in user
     user['homepage'] = f'https://douyin.com/user/{user["sec_uid"]}'
 
+    #  'general_permission': {'following_follower_list_toast': 1},
+    if (d := user.pop('general_permission', None)):
+        assert d == {'following_follower_list_toast': 1}
+        follow_list_toast = 1
+    else:
+        follow_list_toast = 0
+    assert 'follow_list_toast' not in user
+    user['follow_list_toast'] = follow_list_toast
+
+    not_match = {}
     for k, v in DICT_CMP_USER.items():
-        assert user.pop(k) == v
+        if k == 'commerce_info':
+            assert user.pop(k, v) == v
+            continue
+
+        if user.get(k) != v:
+            not_match[k] = (user.get(k), v)
+        else:
+            assert user.pop(k) == v
+    if not_match:
+        console.log(
+            f'{user["homepage"]}: not matching=>{not_match}', style='error')
     reorder = [
         'id', 'sec_uid', 'unique_id', 'nickname',  'signature', 'school_name',
         'age', 'gender', 'following_count', 'follower_count',
         'max_follower_count', 'aweme_count', 'forward_count',
         'favoriting_count', 'total_favorited', 'show_favorite_list',
-        'city',  'district', 'ip', 'country', 'iso_country_code', 'homepage',
-        'avatar', 'signature_language', 'im_primary_role_id', 'im_role_ids',
+        'city',  'district', 'ip', 'country', 'province', 'iso_country_code',
+        'homepage', 'avatar', 'signature_language', 'im_primary_role_id', 'im_role_ids',
         'publish_landing_tab'
     ]
     user1 = {k: user[k] for k in reorder if k in user}
