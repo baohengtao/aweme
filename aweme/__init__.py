@@ -10,4 +10,4 @@ custom_theme = Theme({
     "notice": "bold magenta"
 })
 console = Console(theme=custom_theme, record=True, width=126)
-install(show_locals=True)
+install(show_locals=False)
