@@ -156,7 +156,7 @@ class User(BaseModel):
 
 class Cache(BaseModel):
     id = BigIntegerField(primary_key=True)
-    user = ForeignKeyField(User, backref="caches")
+    user_id = BigIntegerField()
     from_timeline = JSONField(null=True)
     from_page = JSONField(null=True)
 
@@ -282,10 +282,9 @@ class Post(BaseModel):
                 f'find unknow fields: {unknown}', style='warning')
         assert 'unknown_fields' not in aweme_dict
         aweme_dict['unknown_fields'] = unknown or None
+        aweme_dict['username'] = User.get_by_id(aweme_dict['user_id']).username
 
         if not (model := cls.get_or_none(cls.id == id)):
-            aweme_dict['username'] = aweme_dict['nickname'].strip('-_')
-            assert aweme_dict['username']
             cls.insert(aweme_dict).execute()
             return cls.get(id=id)
         model_dict = model_to_dict(model)
