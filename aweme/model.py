@@ -55,6 +55,8 @@ class User(BaseModel):
     gender = IntegerField(null=True)
     following_count = IntegerField()
     follower_count = IntegerField()
+    followed = BooleanField()
+    following = BooleanField()
     max_follower_count = IntegerField()
     aweme_count = IntegerField()
     forward_count = IntegerField()
@@ -90,8 +92,6 @@ class User(BaseModel):
     mix_count = IntegerField()
     secret = IntegerField()
     new_friend_type = IntegerField()
-    follower_status = IntegerField()
-    follow_status = IntegerField()
     account_info_url = TextField(null=True)
 
     @classmethod

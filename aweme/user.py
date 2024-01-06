@@ -120,14 +120,27 @@ def parse_user(r: requests.Response):
     if not_match:
         console.log(
             f'{user["homepage"]}: not matching=>{not_match}', style='error')
+    # process following info
+    follow_status = user.pop('follow_status')
+    follower_status = user.pop('follower_status')
+    if follow_status == 2:
+        assert follower_status == 1
+    else:
+        assert follower_status in [0, 1]
+        assert follow_status in [0, 1]
+    assert 'following' not in user
+    assert 'followed' not in user
+    user['following'] = bool(follow_status)
+    user['followed'] = bool(follower_status)
+
     reorder = [
         'id', 'sec_uid', 'unique_id', 'nickname',  'signature', 'school_name',
-        'age', 'gender', 'following_count', 'follower_count',
+        'age', 'gender', 'following', 'following_count', 'follower_count',
         'max_follower_count', 'aweme_count', 'forward_count',
         'favoriting_count', 'total_favorited', 'show_favorite_list',
         'city',  'district', 'ip', 'country', 'province', 'iso_country_code',
-        'homepage', 'avatar', 'signature_language', 'im_primary_role_id', 'im_role_ids',
-        'publish_landing_tab'
+        'homepage', 'avatar', 'signature_language', 'im_primary_role_id',
+        'im_role_ids', 'publish_landing_tab'
     ]
     user1 = {k: user[k] for k in reorder if k in user}
     user2 = {k: user[k] for k in user if k not in reorder}
