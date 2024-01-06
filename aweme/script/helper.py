@@ -1,3 +1,4 @@
+import sys
 from functools import wraps
 from inspect import signature
 from pathlib import Path
@@ -11,6 +12,14 @@ from aweme.fetcher import fetcher
 if not (d := Path('/Volumes/Art')).exists():
     d = Path.home()/'Pictures'
 default_path = d / 'Aweme'
+
+
+def print_command():
+    argv = sys.argv
+    argv[0] = Path(argv[0]).name
+    console.log(
+        f" run command  @ {pendulum.now().format('YYYY-MM-DD HH:mm:ss')}")
+    console.log(' '.join(argv))
 
 
 def logsaver_decorator(func):
@@ -40,13 +49,14 @@ def save_log(func_name, download_dir: Path):
 
 
 class LogSaver:
+    SAVE_LOG_FOR_COUNT = 100
+    SAVE_LOG_INTERVAL = 12  # hours
+
     def __init__(self, command: str, download_dir: Path):
         self.command = command
         self.download_dir = download_dir
         self.save_log_at = pendulum.now()
         self.save_visits_at = fetcher.visits
-        self.SAVE_LOG_INTERVAL = 12  # hours
-        self.SAVE_LOG_FOR_COUNT = 100
 
     def save_log(self, save_manually=False):
         fetch_count = fetcher.visits - self.save_visits_at

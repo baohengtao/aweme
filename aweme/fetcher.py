@@ -90,7 +90,8 @@ class Fetcher:
                 break
         else:
             sleep_time = 1
-        sleep_time *= random.uniform(0.5, 1.5)
+
+        sleep_time *= random.uniform(0.5, 1.5) * 4
         self._last_fetch += sleep_time
         if (wait_time := (self._last_fetch-time.time())) > 0:
             console.log(
