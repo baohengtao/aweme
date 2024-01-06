@@ -1,6 +1,8 @@
 from datetime import datetime
-from typing import Self
+from pathlib import Path
+from typing import Iterator, Self
 
+import pendulum
 from peewee import Model
 from playhouse.postgres_ext import (
     ArrayField,
@@ -15,6 +17,7 @@ from playhouse.postgres_ext import (
 from playhouse.shortcuts import model_to_dict, update_model_from_dict
 
 from aweme import console
+from aweme.page import Page
 from aweme.post import get_aweme, parse_aweme
 from aweme.user import get_user
 
@@ -109,7 +112,7 @@ class User(BaseModel):
     @classmethod
     def upsert(cls, user_dict: dict) -> Self:
         user_id = user_dict['id']
-        for k in (set(user_dict) - set(cls._meta.fields)):
+        for k in (set(user_dict) - set(cls._meta.columns)):
             console.log(
                 f'ignore unknow key=> {k}:{user_dict.pop(k)}', style='warning')
 
@@ -152,6 +155,86 @@ class User(BaseModel):
                     model.pop(k)
         return "\n".join(f'{k}: {v}'.replace('\n', '  ') for k, v
                          in model.items() if v is not None)
+
+
+class UserConfig(BaseModel):
+    user = ForeignKeyField(User, backref="configs", unique=True)
+    username = CharField()
+    nickname = CharField()
+    following = BooleanField()
+    aweme_count = IntegerField()
+    aweme_fetch = BooleanField(null=True)
+    aweme_fetch_at = DateTimeTZField(null=True)
+    aweme_cache_at = DateTimeTZField(null=True)
+    aweme_next_fetch = DateTimeTZField(null=True)
+    aweme_first_fetch = DateTimeTZField(null=True)
+    signature = CharField(null=True)
+    school_name = CharField(null=True)
+    age = IntegerField(null=True)
+    homepage = TextField()
+
+    def __init__(self, *args, **kwargs) -> None:
+        super().__init__(*args, **kwargs)
+        self.page = Page(self.user_id)
+
+    @classmethod
+    def from_id(cls, user_id: str | int) -> Self:
+        user = User.from_id(user_id, update=True)
+        user_dict = model_to_dict(user)
+        user_dict['user_id'] = user_dict.pop('id')
+        to_insert = {k: v for k, v in user_dict.items()
+                     if k in cls._meta.columns}
+        if cls.get_or_none(user_id=user.id):
+            cls.update(to_insert).where(cls.user_id == user.id).execute()
+        else:
+            cls.insert(to_insert).execute()
+        return cls.get(user_id=user.id)
+
+    def get_homepage(self, since: pendulum.DateTime) -> Iterator['Post']:
+        is_tops = []
+        for aweme in self.page.homepage():
+            is_top = aweme.pop('is_top')
+            assert is_top in [0, 1]
+            is_tops.append(is_top)
+            aweme = Cache.add_cache(aweme).parse()
+            if (create_time := aweme['create_time']) < since:
+                if is_top:
+                    console.log('skip top aweme')
+                    continue
+                else:
+                    console.log(f'time {create_time:%y-%m-%d} is before '
+                                f'{since:%y-%m-%d}, finished!')
+                    break
+            aweme = Post.upsert(aweme)
+            yield aweme
+        assert sorted(is_tops, reverse=True) == is_tops
+
+    def _caching_aweme_for_new(self):
+        if self.aweme_fetch is not None:
+            assert self.aweme_cached_at is None
+            assert self.aweme_fetch or self.aweme_fetch_at
+            return
+        else:
+            assert self.aweme_fetch_at is None
+        since = self.aweme_cache_at or pendulum.from_timestamp(0)
+        console.log(
+            f"caching {self.username}'s homepage (cached_at {since:%y-%m-%d})")
+        now, i = pendulum.now(), 0
+        for i, aweme in enumerate(self.get_homepage(since=since), start=1):
+            console.log(aweme, '\n')
+        console.log(f'{i} awemes cached for {self.username}')
+        self.aweme_cache_at = now
+        self.save()
+
+    def fetch_aweme(self, download_dir: Path):
+        # TODO: fetch aweme
+        if self.aweme_fetch is None:
+            self._caching_aweme_for_new()
+            return
+        elif self.aweme_fetch is False:
+            return
+        if self.aweme_fetch_at:
+            pass
 
 
 class Cache(BaseModel):
@@ -215,7 +298,7 @@ class Post(BaseModel):
     desc = TextField(null=True)
     blog_url = TextField()
     address = JSONField(null=True)
-    region = TextField()
+    region = TextField(null=True)
     tags = ArrayField(CharField, null=True)
     at_users = ArrayField(CharField, null=True)
     video_tag = ArrayField(CharField)
@@ -275,7 +358,7 @@ class Post(BaseModel):
         id = aweme_dict['id']
         assert Cache.get_or_none(id=id)
         unknown = {}
-        for k in (set(aweme_dict) - set(cls._meta.fields)):
+        for k in (set(aweme_dict) - set(cls._meta.columns)):
             unknown[k] = aweme_dict.pop(k)
         if unknown:
             console.log(
@@ -287,7 +370,8 @@ class Post(BaseModel):
         if not (model := cls.get_or_none(cls.id == id)):
             cls.insert(aweme_dict).execute()
             return cls.get(id=id)
-        model_dict = model_to_dict(model)
+        model_dict = model_to_dict(model, recurse=False)
+        model_dict['user_id'] = model_dict.pop('user')
         for k, v in aweme_dict.items():
             assert v or v == 0 or k == 'unknown_fields'
             if v == model_dict[k] or k in ['img_urls', 'video_url']:
@@ -300,4 +384,4 @@ class Post(BaseModel):
 
 
 database.create_tables(
-    [User, Post, Cache])
+    [User, UserConfig, Post, Cache])

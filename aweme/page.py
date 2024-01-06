@@ -7,7 +7,7 @@ from aweme.helper import sort_dict
 
 
 class Page:
-    def __init__(self, user_id):
+    def __init__(self, user_id: int | str):
         self.user_id = user_id
 
     @classmethod
@@ -36,7 +36,7 @@ class Page:
             js = fetcher.get(f).json()
             assert js.pop('status_code') == 0
             for aweme in js.pop('aweme_list'):
-                if not aweme.pop('is_top'):
+                if not aweme['is_top']:
                     aweme_times.append(aweme['create_time'])
                     aweme_ids.append(aweme['aweme_id'])
                 assert 'aweme_from' not in aweme

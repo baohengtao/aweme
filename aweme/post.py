@@ -146,7 +146,8 @@ def parse_aweme(aweme):
         'user_id': int(author.pop('uid')),
         'sec_uid': author.pop('sec_uid'),
         'nickname': author.pop('nickname'),
-        'create_time': pendulum.from_timestamp(aweme.pop('create_time')),
+        'create_time': pendulum.from_timestamp(
+            aweme.pop('create_time'), tz='local'),
         'desc': aweme.pop('desc'),
         'region': aweme.pop('region'),
         'tags': tags,
@@ -267,9 +268,10 @@ def process_media_for_vid(vid_dict):
     vid_dict['uri'] = uri = vid_dict['play_addr']['uri']
     if 'download_addr' in vid_dict:
         assert vid_dict.pop('download_addr')['uri'] == uri
-        assert vid_dict.pop('download_suffix_logo_addr')['uri'] == uri
+        if 'download_suffix_logo_addr' in vid_dict:
+            assert vid_dict.pop('download_suffix_logo_addr')['uri'] == uri
+            assert vid_dict.pop('has_download_suffix_logo_addr') is True
         assert vid_dict.pop('has_watermark') is True
-        assert vid_dict.pop('has_download_suffix_logo_addr') is True
 
     # process bit_rate
     bit_rate = vid_dict.pop('bit_rate')
@@ -310,7 +312,7 @@ def process_media_for_vid(vid_dict):
     # assert vid_dict.pop('ratio') in ['1080p', '720p', '540p']
     # assert vid_dict.pop('gear_name') in [
     #     'adapt_1080_0', 'normal_1080_0', 'normal_720_0', 'normal_540_0']
-    assert vid_dict.pop('quality_type')
+    vid_dict.pop('quality_type')
 
     result = {
         'video_id': vid_dict.pop('uri'),
