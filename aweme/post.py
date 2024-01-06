@@ -317,8 +317,8 @@ def process_media_for_vid(vid_dict):
     result = {
         'video_id': vid_dict.pop('uri'),
         'video_url': vid_dict.pop('url'),
-        'video_size': vid_dict.pop('data_size'),
-        'video_hash': vid_dict.pop('file_hash'),
+        'video_size': vid_dict.pop('data_size', None),
+        'video_hash': vid_dict.pop('file_hash', None),
         'duration': vid_dict.pop('duration'),
         'bit_rate': vid_dict.pop('bit_rate'),
         'height': vid_dict.pop('height'),

@@ -244,7 +244,7 @@ class Cache(BaseModel):
     from_page = JSONField(null=True)
 
     @classmethod
-    def from_id(cls, aweme_id: int, update=False):
+    def from_id(cls, aweme_id: int, update=False) -> dict:
         if not update and (cache := cls.get_or_none(id=aweme_id)):
             return cache.parse()
         cache = get_aweme(aweme_id)
@@ -257,7 +257,10 @@ class Cache(BaseModel):
             return parse_aweme(self.from_page)
         else:
             assert self.from_timeline
-            return parse_aweme(self.from_timeline)
+            aweme = parse_aweme(self.from_timeline)
+            if aweme['is_video'] and 'video_size' not in aweme:
+                return self.from_id(self.id, update=True)
+            return aweme
 
     @classmethod
     def add_cache(cls, aweme: dict) -> Self:
@@ -281,11 +284,16 @@ class Cache(BaseModel):
         if not (self.from_page and self.from_timeline):
             return
         d1, d2 = parse_aweme(self.from_page), parse_aweme(self.from_timeline)
-        assert set(d1) == set(d2)
-        for k in d1:
+        if set(d1) != set(d2):
+            assert set(d1) == set(d2) | {'video_size', 'video_hash'}
+        for k in d2:
             if k in ['img_urls', 'video_url', 'aweme_from']:
                 continue
-            assert d1[k] == d2[k]
+            if d1[k] != d2[k]:
+                assert 'video_size' not in d2
+                assert k in ['duration', 'bit_rate', 'height',
+                             'width', 'FPS', 'gear_name', 'ratio']
+                assert d1[k] > d2[k] or k in ['gear_name', 'width', 'height']
 
 
 class Post(BaseModel):
