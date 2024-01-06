@@ -114,17 +114,3 @@ class Fetcher:
 
 
 fetcher = Fetcher()
-
-
-def get_post(user_id):
-    user_id = user_id.split('?')[0].split('/')[-1]
-    params = {
-        'sec_user_id': user_id,
-        'max_cursor': int(time.time())*1000,
-        'count': 100,
-        'publish_video_strategy_type': '2',
-        'aid': '6383',
-    }
-    url = "https://www.douyin.com/aweme/v1/web/aweme/post/"
-    response = fetcher.get(url, params=params)
-    return response
