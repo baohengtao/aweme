@@ -1,3 +1,10 @@
+import itertools
+
+from geopy.distance import geodesic
+
+from aweme import console
+
+
 def sort_dict(d):
     if isinstance(d, dict):
         return {k: sort_dict(v) if isinstance(v, (dict, list)) else v for k, v in sorted(d.items())}
@@ -5,6 +12,27 @@ def sort_dict(d):
         return [sort_dict(item) if isinstance(item, (dict, list)) else item for item in d]
     else:
         return d
+
+
+def round_loc(lat: float | str, lng: float | str,
+              tolerance: float = 0.01) -> tuple[float, float]:
+    """
+    return rounded location with err small than tolerance meter
+    """
+    lat, lng = float(lat), float(lng)
+    while True:
+        for precision in itertools.count(start=1):
+            lat_, lng_ = round(lat, precision), round(lng, precision)
+            if (err := geodesic((lat, lng), (lat_, lng_)).meters) < tolerance:
+                break
+        if err:
+            console.log(
+                f'round loction: {lat, lng} -> {lat_, lng_} '
+                f'with precision {precision} (err: {err}m)')
+            lat, lng = lat_, lng_
+        else:
+            break
+    return lat_, lng_
 
 
 DICT_CMP_USER = {

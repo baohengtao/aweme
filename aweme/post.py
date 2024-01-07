@@ -6,7 +6,7 @@ from furl import furl
 
 from aweme import console
 from aweme.fetcher import fetcher
-from aweme.helper import DICT_CMP_AWEME, sort_dict
+from aweme.helper import DICT_CMP_AWEME, round_loc, sort_dict
 
 
 def get_aweme(aweme_id: int) -> dict:
@@ -219,13 +219,17 @@ def process_anchor(anchor_info):
     ext_json = json.loads(extra['ext_json'])
     poi_prefix = ext_json['item_ext']['anchor_info'].get('type_name')
     address = extra.pop('address_info')
-    address |= {
-        'poi_id': extra["poi_id"],
-        'poi_prefix': poi_prefix,
-        'poi_name': extra["poi_name"],
+    info = {
+        'id': extra["poi_id"],
+        'location_prefix': poi_prefix,
+        'location_name': extra["poi_name"],
         "longitude": extra["poi_longitude"],
         "latitude": extra["poi_latitude"],
     }
+    info['latitude'], info['longitude'] = round_loc(
+        info['latitude'], info['longitude'])
+    assert address | info == info | address
+    address |= info
     return address
 
 

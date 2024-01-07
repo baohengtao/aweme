@@ -9,6 +9,7 @@ from playhouse.postgres_ext import (
     BigIntegerField,
     BooleanField, CharField,
     DateTimeTZField,
+    DoubleField,
     ForeignKeyField,
     IntegerField, JSONField,
     PostgresqlExtDatabase,
@@ -305,7 +306,10 @@ class Post(BaseModel):
     create_time = DateTimeTZField()
     desc = TextField(null=True)
     blog_url = TextField()
-    address = JSONField(null=True)
+    location = TextField(null=True)
+    location_id = BigIntegerField(null=True)
+    longitude = DoubleField(null=True)
+    latitude = DoubleField(null=True)
     region = TextField(null=True)
     tags = ArrayField(CharField, null=True)
     at_users = ArrayField(CharField, null=True)
@@ -363,6 +367,10 @@ class Post(BaseModel):
 
     @classmethod
     def upsert(cls, aweme_dict: dict) -> Self:
+        if address := aweme_dict.pop('address', None):
+            loc_info = Location.upsert(address).info
+            assert aweme_dict | loc_info == loc_info | aweme_dict
+            aweme_dict |= loc_info
         id = aweme_dict['id']
         assert Cache.get_or_none(id=id)
         unknown = {}
@@ -391,5 +399,57 @@ class Post(BaseModel):
         return cls.get(id=id)
 
 
+class Location(BaseModel):
+    id = BigIntegerField(BigIntegerField)
+    address = CharField(null=True)
+    simple_addr = CharField()
+    province = CharField()
+    city = CharField()
+    district = CharField(null=True)
+    country = CharField()
+    country_code = CharField()
+    city_code = IntegerField(null=True)
+    ad_code_v2 = IntegerField(null=True)
+    city_code_v2 = IntegerField(null=True)
+    location_name = CharField()
+    location_prefix = CharField(null=True)
+    longitude = DoubleField()
+    latitude = DoubleField()
+
+    @classmethod
+    def upsert(cls, address: dict):
+        address = {k: v for k, v in address.items() if v not in ['', None]}
+        for k in ['id', 'city_code', 'ad_code_v2', 'city_code_v2']:
+            if k in address:
+                address[k] = int(address[k])
+
+        if not (model := cls.get_or_none(id=address['id'])):
+            cls.insert(address).execute()
+            return cls.get(id=address['id'])
+
+        model_dict = model_to_dict(model)
+        for k, v in address.items():
+            if v == model_dict[k]:
+                continue
+            console.log(f'+{k}: {v}', style='green bold on dark_green')
+            if (ori := model_dict[k]) is not None:
+                console.log(f'-{k}: {ori}', style='red bold on dark_red')
+        cls.update(address).where(cls.id == address['id']).execute()
+        return cls.get(id=address['id'])
+
+    @property
+    def info(self):
+        if self.location_prefix:
+            location = f'{self.location_prefix} {self.location_name}'
+        else:
+            location = self.location_name
+        return {
+            'location': location,
+            'location_id': self.id,
+            'longitude': self.longitude,
+            'latitude': self.latitude,
+        }
+
+
 database.create_tables(
-    [User, UserConfig, Post, Cache])
+    [User, UserConfig, Post, Cache, Location])
