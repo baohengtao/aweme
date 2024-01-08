@@ -1,5 +1,6 @@
 import select
 import sys
+import time
 from pathlib import Path
 
 import pendulum
@@ -45,13 +46,13 @@ def user_loop(frequency: float = 2,
     logsaver = LogSaver('user_loop', download_dir)
     while True:
         print_command()
+        post_count = ((time.time()-UserConfig.aweme_fetch_at.to_timestamp())
+                      / UserConfig.post_cycle).desc()
         start_time = pendulum.now()
         query = (UserConfig.select()
                  .where(UserConfig.aweme_fetch
                         | UserConfig.aweme_fetch.is_null(True))
-                 .order_by(fn.COALESCE(UserConfig.aweme_fetch_at,
-                                       UserConfig.aweme_cache_at),
-                           UserConfig.id))
+                 .order_by(post_count, UserConfig.id))
         if configs := (query
                        .where(UserConfig.aweme_fetch_at.is_null(True)
                               & UserConfig.aweme_cache_at.is_null(True))
@@ -62,10 +63,11 @@ def user_loop(frequency: float = 2,
         elif configs := query.where(UserConfig.aweme_next_fetch < pendulum.now()):
             console.log(
                 f' {len(configs)} users satisfy fetching conditions, '
-                'Fetching 5 users whose aweme_fetch_at is earliest.')
+                'Fetching 5 users whose estimated new posts is most.')
             configs = configs[:5]
         else:
-            configs = query[:2]
+            configs = query.order_by(fn.COALESCE(UserConfig.aweme_fetch_at,
+                                                 UserConfig.aweme_cache_at))
             console.log(
                 'no user satisfy fetching conditions, '
                 'fetching 2 users whose fetch/cache at is earliest.')

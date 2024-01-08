@@ -180,6 +180,8 @@ class UserConfig(BaseModel):
     aweme_fetch = BooleanField(null=True)
     aweme_fetch_at = DateTimeTZField(null=True)
     aweme_cache_at = DateTimeTZField(null=True)
+    post_at = DateTimeTZField(null=True)
+    post_cycle = IntegerField(null=True)
     aweme_next_fetch = DateTimeTZField(null=True)
     aweme_first_fetch = DateTimeTZField(null=True)
     signature = CharField(null=True)
@@ -238,10 +240,13 @@ class UserConfig(BaseModel):
             console.log(aweme, '\n')
         console.log(f'{i} awemes cached for {self.username}')
         self.aweme_cache_at = now
+        self.post_at = self.user.posts.order_by(
+            Post.create_time.desc()).first().create_time
+        self.post_cycle = self.get_post_cycle()
+        self.note_next_fetch = now.add(hours=self.post_cycle/2)
         self.save()
 
     def fetch_aweme(self, download_dir: Path):
-        # TODO: fetch aweme
         if self.aweme_fetch is None:
             self._caching_aweme_for_new()
             return
@@ -261,7 +266,20 @@ class UserConfig(BaseModel):
         if self.aweme_fetch_at is None:
             self.aweme_first_fetch = now
         self.aweme_fetch_at = now
+        self.post_at = self.user.posts.order_by(
+            Post.create_time.desc()).first().create_time
+        self.post_cycle = self.get_post_cycle()
+        self.note_next_fetch = now.add(hours=self.post_cycle/2)
         self.save()
+
+    def get_post_cycle(self) -> int:
+        interval = pendulum.Duration(days=30)
+        fetch_at = self.aweme_cache_at or self.aweme_fetch_at
+        start, end = fetch_at-interval, fetch_at
+        count = self.user.posts.where(
+            Post.create_time.between(start, end)).count()
+        cycle = interval / (count + 1)
+        return cycle.in_hours()
 
     def _save_aweme(self, download_dir: Path) -> Iterator[dict]:
         user_root = 'User' if self.aweme_fetch_at else 'New'
