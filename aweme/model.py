@@ -98,6 +98,7 @@ class User(BaseModel):
     secret = IntegerField()
     new_friend_type = IntegerField()
     account_info_url = TextField(null=True)
+    unknown_fields = JSONField(null=True)
 
     @classmethod
     def from_id(cls, user_id: str | int, update=False) -> Self:
@@ -114,9 +115,14 @@ class User(BaseModel):
     @classmethod
     def upsert(cls, user_dict: dict) -> Self:
         user_id = user_dict['id']
+        unknown = {}
         for k in (set(user_dict) - set(cls._meta.columns)):
+            unknown[k] = user_dict.pop(k)
+        if unknown:
             console.log(
-                f'ignore unknow key=> {k}:{user_dict.pop(k)}', style='warning')
+                f'find unknow fields: {unknown}', style='warning')
+        assert 'unknown_fields' not in user_dict
+        user_dict['unknown_fields'] = unknown or None
 
         if not (model := cls.get_or_none(cls.id == user_id)):
             user_dict['username'] = user_dict['nickname'].strip('-_')
@@ -125,8 +131,8 @@ class User(BaseModel):
             return cls.get_by_id(user_id)
         model_dict = model_to_dict(model)
         for k, v in user_dict.items():
-            assert v or v == 0
-            if k in ['follower_count', 'max_follower_count',
+            assert v or v == 0 or k == 'unknown_fields'
+            if k in ['follower_count', 'max_follower_count', 'aweme_count',
                      'mplatform_followers_count', 'total_favorited',]:
                 continue
             if v == model_dict[k]:
