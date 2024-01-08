@@ -133,10 +133,13 @@ def parse_user(r: requests.Response):
     user['following'] = bool(follow_status)
     user['followed'] = bool(follower_status)
 
+    if remark := user.pop('remark_name', None):
+        assert 'username' not in user
+        user['username'] = remark
     reorder = [
-        'id', 'sec_uid', 'unique_id', 'nickname',  'signature', 'school_name',
-        'age', 'gender', 'following', 'following_count', 'follower_count',
-        'max_follower_count', 'aweme_count', 'forward_count',
+        'id', 'sec_uid', 'unique_id', 'username', 'nickname',  'signature',
+        'school_name', 'age', 'gender', 'following', 'following_count',
+        'follower_count', 'max_follower_count', 'aweme_count', 'forward_count',
         'favoriting_count', 'total_favorited', 'show_favorite_list',
         'city',  'district', 'ip', 'country', 'province', 'iso_country_code',
         'homepage', 'avatar', 'signature_language', 'im_primary_role_id',

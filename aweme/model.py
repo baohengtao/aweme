@@ -4,6 +4,7 @@ from typing import Iterator, Self
 
 import pendulum
 from peewee import Model
+from photosinfo.model import GirlSearch
 from playhouse.postgres_ext import (
     ArrayField,
     BigIntegerField,
@@ -99,6 +100,7 @@ class User(BaseModel):
     new_friend_type = IntegerField()
     account_info_url = TextField(null=True)
     unknown_fields = JSONField(null=True)
+    search_result = GirlSearch.get_search_results()['awe']
 
     @classmethod
     def from_id(cls, user_id: str | int, update=False) -> Self:
@@ -125,7 +127,11 @@ class User(BaseModel):
         user_dict['unknown_fields'] = unknown or None
 
         if not (model := cls.get_or_none(cls.id == user_id)):
-            user_dict['username'] = user_dict['nickname'].strip('-_')
+            if 'username' not in user_dict:
+                if username := cls.search_result.get(user_dict['sec_uid']):
+                    user_dict['username'] = username
+                else:
+                    user_dict['username'] = user_dict['nickname'].strip('-_')
             assert user_dict['username']
             cls.insert(user_dict).execute()
             return cls.get_by_id(user_id)
