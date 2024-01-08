@@ -52,8 +52,11 @@ def user_loop(frequency: float = 2,
                  .order_by(fn.COALESCE(UserConfig.aweme_fetch_at,
                                        UserConfig.aweme_cache_at),
                            UserConfig.id))
-        if configs := query.where(UserConfig.aweme_fetch_at.is_null(True)
-                                  & UserConfig.aweme_cache_at.is_null(True)):
+        if configs := (query
+                       .where(UserConfig.aweme_fetch_at.is_null(True)
+                              & UserConfig.aweme_cache_at.is_null(True))
+                       .order_by(UserConfig.aweme_fetch.desc(nulls='last'),
+                                 UserConfig.id)):
             console.log(
                 f'total {configs.count()} new users found, fetching...')
         elif configs := query.where(UserConfig.aweme_next_fetch < pendulum.now()):

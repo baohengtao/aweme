@@ -18,6 +18,7 @@ from playhouse.postgres_ext import (
 from playhouse.shortcuts import model_to_dict, update_model_from_dict
 
 from aweme import console
+from aweme.fetcher import download_files
 from aweme.page import Page
 from aweme.post import get_aweme, parse_aweme
 from aweme.user import get_user
@@ -235,7 +236,47 @@ class UserConfig(BaseModel):
         elif self.aweme_fetch is False:
             return
         if self.aweme_fetch_at:
-            pass
+            msg = f"(aweme_fetch_at:{self.aweme_fetch_at:%y-%m-%d})"
+        else:
+            msg = "(New user)"
+        console.rule(f"fetching {self.username}'s homepage {msg}")
+        console.log(self.user)
+        console.log(f"Media Saving: {download_dir}")
+        now = pendulum.now()
+        imgs = self._save_aweme(download_dir)
+        download_files(imgs)
+        console.log(f"{self.username}抖音获取完毕！")
+        if self.aweme_fetch_at is None:
+            self.aweme_first_fetch = now
+        self.aweme_fetch_at = now
+        self.save()
+
+    def _save_aweme(self, download_dir: Path) -> Iterator[dict]:
+        user_root = 'User' if self.aweme_fetch_at else 'New'
+        download_dir = download_dir / user_root / self.username
+        since = self.aweme_fetch_at or pendulum.from_timestamp(0)
+        console.log(f'fetching aweme from {since:%y-%m-%d}')
+        aweme_ids = []
+        for aweme in self.get_homepage(since):
+            aweme_ids.append(aweme.id)
+            console.log(aweme, '\n')
+            medias = list(aweme.medias(download_dir))
+            console.log(f'Downloading {len(medias)} files to {download_dir}')
+            yield from medias
+        if self.aweme_fetch_at:
+            return
+        if awemes := self.user.posts.where(Post.id.not_in(aweme_ids)):
+            console.log(
+                f'{len(awemes)} awemes not visible now but cached, saving...')
+            for aweme in awemes:
+                if aweme.username != self.username:
+                    aweme.username = self.username
+                    aweme.save()
+                console.log(aweme, '\n')
+                medias = list(aweme.medias(download_dir))
+                console.log(
+                    f'Downloading {len(medias)} files to {download_dir}')
+                yield from medias
 
 
 class Cache(BaseModel):
@@ -402,6 +443,56 @@ class Post(BaseModel):
                 console.log(f'-{k}: {ori}', style='red bold on dark_red')
         cls.update(aweme_dict).where(cls.id == id).execute()
         return cls.get(id=id)
+
+    def medias(self, filepath: Path = None) -> Iterator[dict]:
+        prefix = f'{self.create_time:%y-%m-%d}_{self.username}_{self.id}'
+        assert self.is_video == bool(
+            self.video_url) == (not bool(self.img_urls))
+        if self.is_video:
+            yield {
+                'url': self.video_url,
+                'filename': f'{prefix}.mp4',
+                'filepath': filepath,
+                'xmp_info': self.gen_meta(url=self.video_url)
+            }
+            return
+        assert len(self.img_ids) == len(self.img_urls)
+        for sn, (img_id, url) in enumerate(
+                zip(self.img_ids, self.img_urls), start=1):
+            assert img_id in url
+            yield {
+                'url': url,
+                'filename': f'{prefix}_{sn}.webp',
+                'filepath': filepath,
+                'xmp_info': self.gen_meta(sn=sn, url=url)
+            }
+
+    def gen_meta(self, sn: str | int = '', url: str = "") -> dict:
+        if (pic_num := len(self.img_ids or [])) == 1:
+            assert not sn or int(sn) == 1
+            sn = ""
+        elif sn and pic_num > 9:
+            sn = f"{int(sn):02d}"
+        xmp_info = {
+            "ImageUniqueID": self.id,
+            "ImageSupplierID": self.user_id,
+            "ImageSupplierName": "Aweme",
+            "ImageCreatorName": self.username,
+            "BlogTitle":  f"{self.desc or ''}".strip(),
+            "BlogURL": self.blog_url,
+            "Location": self.location,
+            "DateCreated": (self.create_time +
+                            pendulum.Duration(microseconds=int(sn or 0))),
+            "SeriesNumber": sn,
+            "URLUrl": url,
+        }
+
+        xmp_info["DateCreated"] = xmp_info["DateCreated"].strftime(
+            "%Y:%m:%d %H:%M:%S.%f").strip('0').strip('.')
+        res = {"XMP:" + k: v for k, v in xmp_info.items() if v}
+        if self.location:
+            res['AwemeLocation'] = (self.latitude, self.longitude)
+        return res
 
 
 class Location(BaseModel):
