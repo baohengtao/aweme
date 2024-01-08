@@ -148,7 +148,7 @@ def parse_aweme(aweme):
         'nickname': author.pop('nickname'),
         'create_time': pendulum.from_timestamp(
             aweme.pop('create_time'), tz='local'),
-        'desc': aweme.pop('desc'),
+        'desc': aweme.pop('desc').strip(),
         'region': aweme.pop('region'),
         'tags': tags,
         'at_users': at_users,

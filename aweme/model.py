@@ -369,6 +369,11 @@ class Post(BaseModel):
     def upsert(cls, aweme_dict: dict) -> Self:
         if address := aweme_dict.pop('address', None):
             loc_info = Location.upsert(address).info
+            desc = aweme_dict.get('desc', '').strip()
+            assert not desc.endswith('📍')
+            desc += f' 📍{loc_info["location"]}'
+            aweme_dict['desc'] = desc
+
             assert aweme_dict | loc_info == loc_info | aweme_dict
             aweme_dict |= loc_info
         id = aweme_dict['id']
@@ -440,7 +445,7 @@ class Location(BaseModel):
     @property
     def info(self):
         if self.location_prefix:
-            location = f'{self.location_prefix} {self.location_name}'
+            location = f'{self.location_prefix}·{self.location_name}'
         else:
             location = self.location_name
         return {
