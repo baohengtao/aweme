@@ -1,13 +1,19 @@
 import os
 import random
+import re
 import time
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
-from urllib.parse import urlencode
+from typing import Iterable
+from urllib.parse import urlencode, urlparse
 
 import execjs
+import pendulum
 import requests
 from dotenv import load_dotenv
+from exiftool import ExifToolHelper
 from furl import furl
+from requests.exceptions import ConnectionError
 
 from aweme import console
 
@@ -115,3 +121,75 @@ class Fetcher:
 
 
 fetcher = Fetcher()
+
+
+def download_single_file(
+        url: str,
+        filepath: Path,
+        filename: str,
+        xmp_info: dict = None
+):
+    filepath.mkdir(parents=True, exist_ok=True)
+    img = filepath / filename
+    if img.exists():
+        console.log(f'{img} already exists..skipping...', style='info')
+        return
+    else:
+        console.log(f'downloading {img}...', style="dim")
+    while True:
+        try:
+            r = requests.get(url)
+        except ConnectionError as e:
+            period = 60
+            console.log(
+                f"{e}: Sleepping {period} seconds and "
+                f"retry [link={url}]{url}[/link]...", style='error')
+            time.sleep(period)
+            continue
+
+        if r.status_code == 404:
+            console.log(
+                f"{url}, {xmp_info}, {r.status_code}", style="error")
+            return
+        elif r.status_code != 200:
+            console.log(f"{url}, {r.status_code}", style="error")
+            time.sleep(15)
+            console.log(f'retrying download for {url}...')
+            continue
+
+        if int(r.headers['Content-Length']) != len(r.content):
+            console.log(f"expected length: {r.headers['Content-Length']}, "
+                        f"actual length: {len(r.content)} for {img}",
+                        style="error")
+            console.log(f'retrying download for {img}')
+            continue
+
+        img.write_bytes(r.content)
+
+        if xmp_info:
+            write_xmp(img, xmp_info)
+        break
+
+
+def download_files(imgs: Iterable[dict]):
+    with ThreadPoolExecutor(max_workers=7) as pool:
+        futures = [pool.submit(download_single_file, **img) for img in imgs]
+    for future in futures:
+        future.result()
+
+
+def write_xmp(img: Path, tags: dict):
+    for k, v in tags.copy().items():
+        if isinstance(v, str):
+            tags[k] = v.replace('\n', '&#x0a;')
+    params = ['-overwrite_original', '-ignoreMinorErrors', '-escapeHTML']
+    with ExifToolHelper() as et:
+        ext = et.get_tags(img, 'File:FileTypeExtension')[
+            0]['File:FileTypeExtension'].lower()
+        if (suffix := f'.{ext}') != img.suffix:
+            new_img = img.with_suffix(suffix)
+            console.log(
+                f'{img}: suffix is not right, moving to {new_img}...',
+                style='error')
+            img = img.rename(new_img)
+        et.set_tags(img, tags, params=params)
