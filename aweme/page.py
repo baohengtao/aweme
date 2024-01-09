@@ -1,7 +1,9 @@
+import itertools
 from typing import Self
 
 from furl import furl
 
+from aweme import console
 from aweme.fetcher import fetcher
 from aweme.helper import sort_dict
 
@@ -29,12 +31,16 @@ class Page:
             'aid': '6383',
             'count': '18',
             'version_code': '170400',
+            'publish_video_strategy_type': '2',
         }
         f.args |= self.uid_map
         aweme_times, aweme_ids = [], []
-        while True:
+        for page in itertools.count(1):
             js = fetcher.get(f).json()
             assert js.pop('status_code') == 0
+            console.log(
+                f'{len(js["aweme_list"])} awemes found on page {page}',
+                style='notice')
             for aweme in js.pop('aweme_list'):
                 if not aweme['is_top']:
                     aweme_times.append(aweme['create_time'])
@@ -45,9 +51,10 @@ class Page:
             if js.pop('has_more'):
                 f.args['max_cursor'] = js['max_cursor']
             else:
+                console.log('no more aweme', style='notice')
                 break
         assert sorted(aweme_times, reverse=True) == aweme_times
-        assert sorted(aweme_ids, reverse=True) == aweme_ids
+        # assert sorted(aweme_ids, reverse=True) == aweme_ids
 
     def get_following(self):
         url = furl('https://www.douyin.com/aweme/v1/web/user/following/list/')

@@ -138,7 +138,7 @@ def download_single_file(
         console.log(f'downloading {img}...', style="dim")
     while True:
         try:
-            r = requests.get(url)
+            r = requests.get(url, headers={'User-Agent': UA})
         except ConnectionError as e:
             period = 60
             console.log(
@@ -149,8 +149,13 @@ def download_single_file(
 
         if r.status_code == 404:
             console.log(
-                f"{url}, {xmp_info}, {r.status_code}", style="error")
-            return
+                f"404 with normal fetch, using fetcher:{url}", style="info")
+            r = fetcher.session.get(url)
+            time.sleep(30)
+            assert r.status_code == 200
+            # console.log(
+            #     f"{url}, {xmp_info}, {r.status_code}", style="error")
+            # return
         elif r.status_code != 200:
             console.log(f"{url}, {r.status_code}", style="error")
             time.sleep(15)

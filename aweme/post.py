@@ -1,4 +1,5 @@
 import json
+import re
 from copy import deepcopy
 
 import pendulum
@@ -52,17 +53,18 @@ def parse_aweme(aweme):
     aweme = deepcopy(aweme)
 
     # remove useless keys
-    for key in ['music', 'image_album_music_info', 'video_control',
+    for key in ['image_album_music_info', 'video_control',
                 'visual_search_info', 'is_use_music', 'impression_data',
-                'photo_search_entrance', 'authentication_token',
-                'seo_info', 'risk_infos',]:
+                'photo_search_entrance', 'authentication_token', 'interaction_stickers',
+                'seo_info', 'risk_infos']:
         aweme.pop(key)
-    for key in ['vtag_search', 'main_arch_common',
+    for key in ['vtag_search', 'main_arch_common', 'music',
                 'duet_origin_item', 'duet_origin_item_id']:
         aweme.pop(key, None)
     assert aweme.pop('share_info')['share_url'] == aweme.pop('share_url')
     assert aweme.pop('preview_title') == aweme['desc']
-    assert aweme.pop('mark_largely_following') is False
+    if aweme['mark_largely_following'] is False:
+        assert aweme.pop('mark_largely_following') is False
     if dmp := aweme.pop('aweme_acl', None):
         assert dmp == {'download_mask_panel': {'code': 1, 'show_type': 0}}
         aweme['download_mask_panel'] = 1
@@ -131,6 +133,7 @@ def parse_aweme(aweme):
             tags.append(extra['hashtag_name'])
         elif extra['type'] == 0:
             extra.pop('aweme_id', None)
+            extra.pop('sub_type', None)
             assert set(extra.keys()) == {
                 'caption_end', 'caption_start', 'end',
                 'sec_uid', 'start', 'type', 'user_id'}
@@ -156,7 +159,8 @@ def parse_aweme(aweme):
         'aweme_from': aweme.pop('aweme_from'),
         'aweme_type': aweme.pop('aweme_type'),
     }
-    result['video_tag'] = [tag['tag_name'] for tag in aweme.pop('video_tag')]
+    result['video_tag'] = [tag['tag_name']
+                           for tag in aweme.pop('video_tag') if tag['tag_name']]
 
     statistics = aweme.pop('statistics')
     assert result | statistics == statistics | result
@@ -166,12 +170,21 @@ def parse_aweme(aweme):
     assert result | media == media | result
     result |= media
     assert aweme.pop('media_type') == (4 if result['is_video'] else 2)
-    result['aweme_type'] = {0: 'GENERAL',
-                            51: 'DUET_VIDEO',
-                            53: 'MV',
-                            55: 'STICK_POINT_VIDEO',
-                            61: 'IMAGE_VIDEO',
-                            68: 'IMAGE_PUBLISH'}[result['aweme_type']]
+    try:
+        result['aweme_type'] = {
+            0: 'GENERAL',
+            51: 'DUET_VIDEO',
+            53: 'MV',
+            55: 'STICK_POINT_VIDEO',
+            61: 'IMAGE_VIDEO',
+            66: 'RECOMMEND_TMPL_MV',
+            68: 'IMAGE_PUBLISH',
+            109: 'CANVAS',
+            110: 'KARAOKE'
+        }[result['aweme_type']]
+    except KeyError:
+        raise ValueError(result['aweme_type'],
+                         aweme['search_impr']['entity_type'])
 
     assert result['user_id'] == aweme.pop('author_user_id')
     if search_impr := aweme.pop('search_impr', None):
@@ -187,9 +200,6 @@ def parse_aweme(aweme):
         assert result['is_video'] is True
         assert 'danmaku_cnt' not in result
         result['danmaku_cnt'] = dm['danmaku_cnt']
-
-    if _ := aweme.pop('interaction_stickers', None):
-        assert len(_) == 1
 
     assert aweme.pop('duration') == result.get('duration', 0)
 
@@ -208,7 +218,8 @@ def parse_aweme(aweme):
             assert ht is None
             # assert result['width'] <= result['height']
     if 'caption' in result:
-        assert result.pop('caption') == result['desc']
+        assert re.sub(r'\s', '', result.pop('caption')
+                      ) == re.sub(r'\s', '', result['desc'])
     return result
 
 
@@ -262,8 +273,8 @@ def process_media_for_vid(vid_dict):
     for k in ['cover', 'origin_cover', 'gaussian_cover',
               'dynamic_cover', 'meta', 'height', 'width',
               'big_thumbs', 'misc_download_addrs', 'cover_original_scale',
-              'cdn_url_expired', 'animated_cover', 'use_static_cover',
-              'horizontal_type', 'is_h265'
+              'animated_cover', 'use_static_cover', 'optimized_cover',
+              'horizontal_type', 'is_h265', 'cdn_url_expired',
               ]:
         vid_dict.pop(k, None)
     assert vid_dict.pop('bit_rate_audio') is None
@@ -284,12 +295,14 @@ def process_media_for_vid(vid_dict):
         if play_addr := vid_dict.pop(key, None):
             if play_addr not in play_addrs:
                 assert play_addr['uri'] == uri
-                assert (play_addr['data_size']
-                        < bit_rate[0]['play_addr']['data_size'])
+                assert (play_addr['width']
+                        <= bit_rate[0]['play_addr']['width'])
+                assert (play_addr['height']
+                        <= bit_rate[0]['play_addr']['height'])
     for b in bit_rate[1:]:
         assert b['bit_rate'] < bit_rate[0]['bit_rate']
-        assert (b['play_addr']['data_size']
-                < bit_rate[0]['play_addr']['data_size'])
+        # assert (b['play_addr']['data_size']
+        #         < bit_rate[0]['play_addr']['data_size'])
         assert b['play_addr']['uri'] == uri
     assert vid_dict | bit_rate[0] == bit_rate[0] | vid_dict
     vid_dict |= bit_rate[0]
@@ -301,8 +314,8 @@ def process_media_for_vid(vid_dict):
 
     # get url
     url = vid_dict.pop('url_list')[-1]
-    assert url.startswith(
-        f'https://www.douyin.com/aweme/v1/play/?video_id={uri}')
+    assert f'video_id={uri}' in url
+    assert url.startswith('https://www.douyin.com/aweme/v1/play/?')
     assert 'url' not in vid_dict
     vid_dict['url'] = url
 
