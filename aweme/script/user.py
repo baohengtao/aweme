@@ -1,6 +1,7 @@
 import select
 import sys
 import time
+from itertools import islice
 from pathlib import Path
 
 import pendulum
@@ -20,12 +21,12 @@ app = Typer()
 @logsaver_decorator
 def user_add(max_user: int = 20,
              all_user: bool = Option(False, '--all-user', '-a')):
-    from itertools import islice
     if all_user:
         max_user = None
     page = Page.get_self_page()
     uids = {u.user_id for u in UserConfig.select().where(UserConfig.following)}
-    uids_following = [u['uid'] for u in islice(page.get_following(), max_user)]
+    uids_following = [int(u['uid']) for u
+                      in islice(page.get_following(), max_user)]
     to_add = [uid for uid in uids_following if uid not in uids]
     if max_user is None:
         if uids := uids - set(uids_following):
@@ -66,8 +67,9 @@ def user_loop(frequency: float = 2,
                 'Fetching 5 users whose estimated new posts is most.')
             configs = configs[:5]
         else:
-            configs = query.order_by(fn.COALESCE(UserConfig.aweme_fetch_at,
-                                                 UserConfig.aweme_cache_at))
+            configs = (query.limit(2).order_by(fn.COALESCE(
+                UserConfig.aweme_fetch_at,
+                UserConfig.aweme_cache_at)))
             console.log(
                 'no user satisfy fetching conditions, '
                 'fetching 2 users whose fetch/cache at is earliest.')
