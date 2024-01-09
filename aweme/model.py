@@ -314,6 +314,7 @@ class Cache(BaseModel):
     user_id = BigIntegerField()
     from_timeline = JSONField(null=True)
     from_page = JSONField(null=True)
+    blog_url = TextField()
 
     @classmethod
     def from_id(cls, aweme_id: int, update=False) -> dict:
@@ -337,7 +338,11 @@ class Cache(BaseModel):
     @classmethod
     def add_cache(cls, aweme: dict) -> Self:
         aweme_id, user_id = aweme['aweme_id'], aweme['author_user_id']
-        row = dict(id=aweme_id, user_id=user_id)
+        if aweme['images']:
+            blog_url = f'https://www.douyin.com/note/{aweme["aweme_id"]}'
+        else:
+            blog_url = f'https://www.douyin.com/video/{aweme["aweme_id"]}'
+        row = dict(id=aweme_id, user_id=user_id, blog_url=blog_url)
         if aweme['aweme_from'] == 'page':
             row['from_page'] = aweme
         else:
