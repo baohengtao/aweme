@@ -1,6 +1,6 @@
+import hashlib
 import os
 import random
-import re
 import time
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -127,7 +127,9 @@ def download_single_file(
         url: str,
         filepath: Path,
         filename: str,
-        xmp_info: dict = None
+        xmp_info: dict = None,
+        filesize: int = None,
+        hash: str = None,
 ):
     filepath.mkdir(parents=True, exist_ok=True)
     img = filepath / filename
@@ -168,6 +170,10 @@ def download_single_file(
                         style="error")
             console.log(f'retrying download for {img}')
             continue
+        if filesize:
+            assert len(r.content) == filesize
+        if hash:
+            assert hashlib.md5(r.content).hexdigest() == hash
 
         img.write_bytes(r.content)
 

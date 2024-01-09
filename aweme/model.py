@@ -479,11 +479,14 @@ class Post(BaseModel):
         assert self.is_video == bool(
             self.video_url) == (not bool(self.img_urls))
         if self.is_video:
+            assert self.video_hash
             yield {
                 'url': self.video_url,
                 'filename': f'{prefix}.mp4',
                 'filepath': filepath,
-                'xmp_info': self.gen_meta(url=self.video_url)
+                'xmp_info': self.gen_meta(url=self.video_url),
+                'filesize': self.video_size,
+                'hash': self.video_hash,
             }
             return
         assert len(self.img_ids) == len(self.img_urls)
@@ -494,7 +497,7 @@ class Post(BaseModel):
                 'url': url,
                 'filename': f'{prefix}_{sn}.webp',
                 'filepath': filepath,
-                'xmp_info': self.gen_meta(sn=sn, url=url)
+                'xmp_info': self.gen_meta(sn=sn, url=url),
             }
 
     def gen_meta(self, sn: str | int = '', url: str = "") -> dict:
