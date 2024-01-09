@@ -2,13 +2,13 @@ import hashlib
 import os
 import random
 import time
+from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Iterable
-from urllib.parse import urlencode, urlparse
+from urllib.parse import urlencode
 
 import execjs
-import pendulum
 import requests
 from dotenv import load_dotenv
 from exiftool import ExifToolHelper
@@ -55,6 +55,8 @@ class Fetcher:
         self.visits = 0
         self._visit_count = 0
         self._last_fetch = time.time()
+        self.enable_pause = True
+        self.deque = deque(maxlen=5)
 
     def _get_xbogus(self, params: dict | str) -> str:
         assert 'X-Bogus' not in params, 'X-Bogus in params'
@@ -63,7 +65,9 @@ class Fetcher:
         return self.js_func.call('sign', params, UA)
 
     def get(self, url: str | furl, params: dict = None):
-        self._pause()
+        if self.enable_pause:
+            self._pause()
+        console.log(f'fetching {url}...', style='info')
         url = furl(url)
         url.args |= params or {}
         url.args.pop('X-Bogus', None)
@@ -90,15 +94,17 @@ class Fetcher:
             self._visit_count = 1
             self._last_fetch = time.time()
             return
-        for flag in [2048, 1024, 256, 64, 16]:
+        for flag in [2048, 1024, 256, 64, 32]:
             if self._visit_count % flag == 0:
-                sleep_time = flag
+                sleep_time = flag * 2
                 break
         else:
-            sleep_time = 1
+            sleep_time = 32
 
-        sleep_time *= random.uniform(0.5, 1.5) * 4
+        sleep_time *= random.uniform(0.75, 1.25)
         self._last_fetch += sleep_time
+        if len(self.deque) == 5:
+            self._last_fetch = max(self._last_fetch, self.deque[0]+300)
         if (wait_time := (self._last_fetch-time.time())) > 0:
             console.log(
                 f'sleep {wait_time:.1f} seconds...'
@@ -117,6 +123,7 @@ class Fetcher:
         while time.time() < self._last_fetch:
             time.sleep(0.1)
         self._last_fetch = time.time()
+        self.deque.append(self._last_fetch)
         self._visit_count += 1
 
 
@@ -183,7 +190,7 @@ def download_single_file(
 
 
 def download_files(imgs: Iterable[dict]):
-    with ThreadPoolExecutor(max_workers=7) as pool:
+    with ThreadPoolExecutor(max_workers=10) as pool:
         futures = [pool.submit(download_single_file, **img) for img in imgs]
     for future in futures:
         future.result()
