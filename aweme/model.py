@@ -235,6 +235,7 @@ class UserConfig(BaseModel):
         since = self.aweme_cache_at or pendulum.from_timestamp(0)
         console.log(
             f"caching {self.username}'s homepage (cached_at {since:%y-%m-%d})")
+        console.log(self.user)
         now, i = pendulum.now(), 0
         for i, aweme in enumerate(self.get_homepage(since=since), start=1):
             console.log(aweme, '\n')
@@ -293,8 +294,11 @@ class UserConfig(BaseModel):
             medias = list(aweme.medias(download_dir))
             console.log(f'Downloading {len(medias)} files to {download_dir}')
             yield from medias
+        console.log(f'{len(aweme_ids)} awemes fetched')
         if self.aweme_fetch_at:
             return
+        for cache in Cache.select().where(Cache.user_id == self.user_id):
+            Post.upsert(cache.parse())
         if awemes := self.user.posts.where(Post.id.not_in(aweme_ids)):
             console.log(
                 f'{len(awemes)} awemes not visible now but cached, saving...')
@@ -307,6 +311,52 @@ class UserConfig(BaseModel):
                 console.log(
                     f'Downloading {len(medias)} files to {download_dir}')
                 yield from medias
+
+
+class Artist(BaseModel):
+    username = CharField(index=True)
+    user = ForeignKeyField(User, unique=True, backref='artist')
+    age = IntegerField(null=True)
+    photos_num = IntegerField(default=0)
+    aweme_count = IntegerField()
+    signature = CharField(null=True)
+    school_name = ArrayField(field_class=TextField, null=True)
+    following_count = IntegerField()
+    follower_count = IntegerField()
+    homepage = CharField(null=True)
+
+    _cache: dict[int, Self] = {}
+
+    class Meta:
+        table_name = "artist"
+
+    @classmethod
+    def from_id(cls, user_id: int, update: bool = False) -> Self:
+        if not update and user_id in cls._cache:
+            return cls._cache[user_id]
+        user = User.from_id(user_id, update=update)
+        user_dict = model_to_dict(user)
+        user_dict['user_id'] = user_dict.pop('id')
+        user_dict = {k: v for k, v in user_dict.items()
+                     if k in cls._meta.columns}
+        if cls.get_or_none(user_id=user_id):
+            cls.update(user_dict).where(cls.user_id == user_id).execute()
+        else:
+            cls.insert(user_dict).execute()
+        artist = cls.get(user_id=user_id)
+        cls._cache[user_id] = artist
+        return artist
+
+    @property
+    def xmp_info(self):
+        xmp = {
+            "Artist": self.username,
+            "ImageCreatorID": self.homepage,
+            "ImageSupplierID": self.user_id,
+            "ImageSupplierName": "Aweme",
+        }
+
+        return {"XMP:" + k: v for k, v in xmp.items()}
 
 
 class Cache(BaseModel):
@@ -532,6 +582,22 @@ class Post(BaseModel):
             res['AwemeLocation'] = (self.latitude, self.longitude)
         return res
 
+    def __str__(self):
+        model = model_to_dict(self, recurse=False)
+        res = {}
+        for k, v in model.items():
+            if v is None:
+                continue
+            if k in ['admire_count', 'collect_count', 'comment_count',
+                     'digg_count', 'play_count', 'share_count',
+                     'user_digged', 'collect_stat']:
+                if v == 0:
+                    continue
+            if k in ['img_urls']:
+                continue
+            res[k] = v
+        return "\n".join(f'{k}: {v}' for k, v in res.items())
+
 
 class Location(BaseModel):
     id = BigIntegerField(BigIntegerField)
@@ -586,4 +652,4 @@ class Location(BaseModel):
 
 
 database.create_tables(
-    [User, UserConfig, Post, Cache, Location])
+    [User, UserConfig, Artist, Post, Cache, Location])
