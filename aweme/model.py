@@ -101,6 +101,7 @@ class User(BaseModel):
     account_info_url = TextField(null=True)
     unknown_fields = JSONField(null=True)
     search_result = GirlSearch.get_search_results()['awe']
+    redirect = BigIntegerField(null=True)
 
     @classmethod
     def from_id(cls, user_id: str | int, update=False) -> Self:

@@ -117,3 +117,13 @@ def user_loop(frequency: float = 2,
                             "L to save log,\n"
                             "Q to exit,\n"
                         )
+
+
+@app.command()
+def write_meta(download_dir: Path = default_path):
+    from imgmeta.script import rename, write_meta
+    for folder in ['User', 'New']:
+        ori = download_dir / folder
+        if ori.exists():
+            write_meta(ori)
+            rename(ori, new_dir=True, root=ori.parent / (ori.stem + 'Pro'))
