@@ -177,7 +177,7 @@ class UserConfig(BaseModel):
     nickname = CharField()
     following = BooleanField()
     aweme_count = IntegerField()
-    aweme_fetch = BooleanField(null=True)
+    aweme_fetch = BooleanField(default=True, null=True)
     aweme_fetch_at = DateTimeTZField(null=True)
     aweme_cache_at = DateTimeTZField(null=True)
     post_at = DateTimeTZField(null=True)
