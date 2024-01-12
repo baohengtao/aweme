@@ -189,6 +189,7 @@ class UserConfig(BaseModel):
     school_name = CharField(null=True)
     age = IntegerField(null=True)
     homepage = TextField()
+    photos_num = IntegerField(default=0)
 
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
@@ -245,7 +246,7 @@ class UserConfig(BaseModel):
         self.post_at = self.user.posts.order_by(
             Post.create_time.desc()).first().create_time
         self.post_cycle = self.get_post_cycle()
-        self.note_next_fetch = now.add(hours=self.post_cycle/2)
+        self.aweme_next_fetch = now.add(hours=self.post_cycle/2)
         self.save()
 
     def fetch_aweme(self, download_dir: Path):
@@ -255,7 +256,10 @@ class UserConfig(BaseModel):
         elif self.aweme_fetch is False:
             return
         if self.aweme_fetch_at:
-            msg = f"(aweme_fetch_at:{self.aweme_fetch_at:%y-%m-%d})"
+            since = pendulum.instance(self.aweme_fetch_at)
+            estimated_post = int(since.diff().in_hours() / self.post_cycle)
+            estimated_post = f'estimated_new_posts:{estimated_post}'
+            msg = f' (fetch_at:{since:%y-%m-%d} {estimated_post})'
         else:
             msg = "(New user)"
         console.rule(f"fetching {self.username}'s homepage {msg}")
@@ -271,12 +275,13 @@ class UserConfig(BaseModel):
         self.post_at = self.user.posts.order_by(
             Post.create_time.desc()).first().create_time
         self.post_cycle = self.get_post_cycle()
-        self.note_next_fetch = now.add(hours=self.post_cycle/2)
+        self.aweme_next_fetch = now.add(hours=self.post_cycle/2)
         self.save()
 
     def get_post_cycle(self) -> int:
         interval = pendulum.Duration(days=30)
-        fetch_at = self.aweme_cache_at or self.aweme_fetch_at
+        if not (fetch_at := self.aweme_cache_at or self.aweme_fetch_at):
+            return
         start, end = fetch_at-interval, fetch_at
         count = self.user.posts.where(
             Post.create_time.between(start, end)).count()
@@ -284,7 +289,8 @@ class UserConfig(BaseModel):
         return cycle.in_hours()
 
     def _save_aweme(self, download_dir: Path) -> Iterator[dict]:
-        user_root = 'User' if self.aweme_fetch_at else 'New'
+        user_root = 'User' if (
+            self.photos_num and self.aweme_fetch_at) else 'New'
         download_dir = download_dir / user_root / self.username
         since = self.aweme_fetch_at or pendulum.from_timestamp(0)
         console.log(f'fetching aweme from {since:%y-%m-%d}')
@@ -299,7 +305,8 @@ class UserConfig(BaseModel):
         if self.aweme_fetch_at:
             return
         for cache in Cache.select().where(Cache.user_id == self.user_id):
-            Post.upsert(cache.parse())
+            if not Post.get_or_none(id=cache.id):
+                Post.upsert(cache.parse())
         if awemes := self.user.posts.where(Post.id.not_in(aweme_ids)):
             console.log(
                 f'{len(awemes)} awemes not visible now but cached, saving...')
@@ -312,6 +319,31 @@ class UserConfig(BaseModel):
                 console.log(
                     f'Downloading {len(medias)} files to {download_dir}')
                 yield from medias
+
+    @classmethod
+    def update_table(cls):
+        from photosinfo.model import Girl
+
+        for config in cls:
+            config: cls
+            if config.aweme_fetch is None:
+                assert config.aweme_fetch_at is None
+            elif config.aweme_fetch is True:
+                assert not (config.aweme_cache_at and config.aweme_fetch_at)
+            # else:
+            #     assert config.aweme_fetch_at and not config.aweme_cache_at
+
+            config.username = config.user.username
+            if girl := Girl.get_or_none(username=config.username):
+                config.photos_num = girl.awe_num
+            else:
+                config.photos_num = 0
+            if fetch_at := (config.aweme_fetch_at or config.aweme_cache_at):
+                config.post_cycle = config.get_post_cycle()
+                config.aweme_next_fetch = fetch_at + \
+                    pendulum.duration(hours=config.post_cycle/2)
+
+            config.save()
 
 
 class Artist(BaseModel):
