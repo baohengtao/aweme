@@ -178,7 +178,7 @@ def download_single_file(
             console.log(f'retrying download for {img}')
             continue
         f, h = len(r.content), hashlib.md5(r.content).hexdigest()
-        if (f, h) != (filesize, hash):
+        if (f, h) != (filesize, hash) and (filesize or hash):
             console.log(f"expected size and hash: {filesize}, {hash}, "
                         f"actual: {f}, {h} for {img}",
                         style="error")
