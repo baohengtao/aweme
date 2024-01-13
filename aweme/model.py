@@ -291,14 +291,16 @@ class UserConfig(BaseModel):
     def _save_aweme(self, download_dir: Path) -> Iterator[dict]:
         user_root = 'User' if (
             self.photos_num and self.aweme_fetch_at) else 'New'
-        download_dir = download_dir / user_root / self.username
+        img_dir = download_dir / user_root / self.username
+        vid_dir = download_dir / 'mp4'/{user_root}
         since = self.aweme_fetch_at or pendulum.from_timestamp(0)
         console.log(f'fetching aweme from {since:%y-%m-%d}')
         aweme_ids = []
         for aweme in self.get_homepage(since):
             aweme_ids.append(aweme.id)
             console.log(aweme, '\n')
-            medias = list(aweme.medias(download_dir))
+            save_path = vid_dir if aweme.is_video else img_dir
+            medias = list(aweme.medias(save_path))
             console.log(f'Downloading {len(medias)} files to {download_dir}')
             yield from medias
         console.log(f'{len(aweme_ids)} awemes fetched')
@@ -315,7 +317,8 @@ class UserConfig(BaseModel):
                     aweme.username = self.username
                     aweme.save()
                 console.log(aweme, '\n')
-                medias = list(aweme.medias(download_dir))
+                save_path = vid_dir if aweme.is_video else img_dir
+                medias = list(aweme.medias(save_path))
                 console.log(
                     f'Downloading {len(medias)} files to {download_dir}')
                 yield from medias
@@ -563,7 +566,7 @@ class Post(BaseModel):
         return cls.get(id=id)
 
     def medias(self, filepath: Path = None) -> Iterator[dict]:
-        prefix = f'{self.create_time:%y-%m-%d}_{self.username}_{self.id}'
+        prefix = f'{self.username}_{self.create_time:%y-%m-%d}_{self.id}'
         assert self.is_video == bool(
             self.video_url) == (not bool(self.img_urls))
         if self.is_video:
