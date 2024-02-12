@@ -292,7 +292,7 @@ class UserConfig(BaseModel):
         user_root = 'User' if (
             self.photos_num and self.aweme_fetch_at) else 'New'
         img_dir = download_dir / user_root / self.username
-        vid_dir = download_dir / 'mp4'/{user_root}
+        vid_dir = download_dir / 'mp4' / user_root
         since = self.aweme_fetch_at or pendulum.from_timestamp(0)
         console.log(f'fetching aweme from {since:%y-%m-%d}')
         aweme_ids = []

@@ -274,10 +274,9 @@ def process_media_for_vid(vid_dict):
               'dynamic_cover', 'meta', 'height', 'width',
               'big_thumbs', 'misc_download_addrs', 'cover_original_scale',
               'animated_cover', 'use_static_cover', 'optimized_cover',
-              'horizontal_type', 'is_h265', 'cdn_url_expired',
+              'horizontal_type', 'is_h265', 'cdn_url_expired', 'bit_rate_audio'
               ]:
         vid_dict.pop(k, None)
-    assert vid_dict.pop('bit_rate_audio') is None
 
     assert 'uri' not in vid_dict
     vid_dict['uri'] = uri = vid_dict['play_addr']['uri']
@@ -306,6 +305,7 @@ def process_media_for_vid(vid_dict):
         assert b['play_addr']['uri'] == uri
     assert vid_dict | bit_rate[0] == bit_rate[0] | vid_dict
     vid_dict |= bit_rate[0]
+    assert vid_dict.pop('format', 'mp4') == 'mp4'
 
     # process play_addr
     play_addr = vid_dict.pop('play_addr')
