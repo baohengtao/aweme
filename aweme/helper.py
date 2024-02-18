@@ -107,7 +107,6 @@ DICT_CMP_AWEME = {
         'can_comment': True,
         'can_show_comment': True},
     'boost_status': 0,
-    'charge_info': {'is_charge_content': False, 'is_subscribe_content': False},
     'collection_corner_mark': 0,
     'comment_permission_info': {
         'comment_permission_status': 0,

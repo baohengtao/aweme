@@ -54,14 +54,16 @@ def parse_aweme(aweme):
 
     # remove useless keys
     for key in ['image_album_music_info', 'video_control',
-                'visual_search_info', 'is_use_music', 'impression_data',
+                'visual_search_info', 'is_use_music', 'impression_data', 'share_info',
                 'photo_search_entrance', 'authentication_token', 'interaction_stickers',
+                'entertainment_product_info',
                 'seo_info', 'risk_infos']:
         aweme.pop(key)
     for key in ['vtag_search', 'main_arch_common', 'music',
+                'charge_info',
+                'enable_comment_sticker_rec', 'share_url',
                 'duet_origin_item', 'duet_origin_item_id']:
         aweme.pop(key, None)
-    assert aweme.pop('share_info')['share_url'] == aweme.pop('share_url')
     assert aweme.pop('preview_title') == aweme['desc']
     if aweme['mark_largely_following'] is False:
         assert aweme.pop('mark_largely_following') is False
@@ -79,8 +81,6 @@ def parse_aweme(aweme):
         if 'descendants' in aweme:
             assert aweme.pop('descendants') == {
                 'notify_msg': '头条', 'platforms': ['toutiao']}
-        assert aweme.pop('entertainment_product_info') == {'market_info': {
-            'limit_free': {'in_free': False}}}
         assert aweme.pop('xigua_base_info') == {
             'item_id': 0, 'star_altar_order_id': 0,
             'star_altar_type': 0, 'status': 0}
@@ -96,8 +96,6 @@ def parse_aweme(aweme):
             'guide_scene_type': 0}
         aweme.pop('xigua_base_info') == {
             'star_altar_order_id': 0, 'star_altar_type': 0, 'status': 0}
-        assert aweme.pop('entertainment_product_info') == {'market_info': {
-            'limit_free': {'in_free': False}}, 'sub_title': None, 'biz': 0}
     else:
         assert False
     assert aweme.pop('status') == {
