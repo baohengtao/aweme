@@ -1,3 +1,4 @@
+import itertools
 import select
 import sys
 import time
@@ -6,10 +7,11 @@ from pathlib import Path
 
 import pendulum
 from peewee import fn
+from rich.prompt import Confirm, Prompt
 from typer import Option, Typer
 
 from aweme import console
-from aweme.model import UserConfig
+from aweme.model import Artist, User, UserConfig
 from aweme.page import Page
 
 from .helper import LogSaver, default_path, logsaver_decorator, print_command
@@ -128,3 +130,53 @@ def write_meta(download_dir: Path = default_path):
         if ori.exists():
             write_meta(ori)
             rename(ori, new_dir=True, root=ori.parent / (ori.stem + 'Pro'))
+
+
+@app.command(help='Add user to database of users whom we want to fetch from')
+@logsaver_decorator
+def user(download_dir: Path = default_path):
+    """Add user to database of users whom we want to fetch from"""
+    UserConfig.update_table()
+    user = UserConfig.select().order_by(UserConfig.id.desc()).first()
+    console.log(f'total {UserConfig.select().count()} users in database')
+    console.log(f'the latest added user is {user.username}({user.user_id})')
+
+    while user_id := Prompt.ask('请输入用户名:smile:').strip():
+        user_id = user_id.split('?')[0].split('/')[-1].strip()
+        if user := (User.get_or_none(username=user_id)
+                    or User.get_or_none(sec_uid=user_id)):
+            user_id = user.id
+        if uc := UserConfig.get_or_none(user_id=user_id):
+            console.log(f'用户{uc.username}已在列表中')
+        uc = UserConfig.from_id(user_id)
+        console.log(uc)
+        uc.aweme_fetch = Confirm.ask(f"是否获取{uc.username}的主页？", default=True)
+        uc.save()
+        console.log(f'用户{uc.username}更新完成')
+        if uc.aweme_fetch and not uc.following:
+            console.log(f'用户{uc.username}未关注，记得关注🌸', style='notice')
+        elif not uc.aweme_fetch and uc.following:
+            console.log(f'用户{uc.username}已关注，记得取关🔥', style='notice')
+        if not uc.aweme_fetch and Confirm.ask('是否删除该用户？', default=False):
+            uc.delete_instance()
+            console.log('用户已删除')
+        elif uc.aweme_fetch and Confirm.ask('是否现在抓取', default=False):
+            uc.fetch_aweme(download_dir)
+        console.log()
+
+
+@app.command()
+def database_clean():
+    uids_no_photo = {
+        artist.user_id for artist in Artist if artist.photos_num == 0}
+    uids_no_photo -= {u.user_id for u in UserConfig}
+    if not uids_no_photo:
+        return
+    users = User.select().where(User.id.in_(uids_no_photo))
+    for u in users:
+        console.log(u, '\n')
+        if Confirm.ask(f'是否删除{u.username}({u.id})？', default=False):
+            for n in itertools.chain(u.posts, u.artist):
+                n.delete_instance()
+            u.delete_instance()
+            console.log(f'用户{u.username}已删除')
