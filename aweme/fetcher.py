@@ -1,19 +1,22 @@
 import hashlib
-import os
+import json
+import pickle
 import random
+import re
 import time
 from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Iterable
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode
 
 import execjs
 import requests
-from dotenv import load_dotenv
+from bs4 import BeautifulSoup
 from exiftool import ExifToolHelper
 from furl import furl
 from requests.exceptions import ConnectionError
+from selenium import webdriver
 
 from aweme import console
 
@@ -21,10 +24,6 @@ UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML,
 
 
 def _get_session():
-    env_file = Path(__file__).with_name('.env')
-    load_dotenv(env_file)
-    if not (COOKIE := os.getenv('COOKIE')):
-        raise ValueError(f'no cookie found in {env_file}')
     session = requests.session()
     session.headers = {
         "authority": "www.douyin.com",
@@ -40,7 +39,6 @@ def _get_session():
         "referer": "https://www.douyin.com/user",
         "accept-encoding": "gzip, deflate, br",
         "accept-language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
-        "cookie": COOKIE
     }
     return session
 
@@ -48,6 +46,7 @@ def _get_session():
 class Fetcher:
     def __init__(self):
         self.session = _get_session()
+        self.login_status = None
         with Path(__file__).with_name('X-Bogus.js').open() as fp:
             ENV_NODE_JS = Path(__file__).resolve().parent.parent
             self.js_func = execjs.compile(
@@ -58,6 +57,41 @@ class Fetcher:
         self.enable_pause = True
         self.deque = deque(maxlen=5)
 
+    def get_login_status(self):
+        r = self.session.get('https://www.douyin.com/user/self')
+        soup = BeautifulSoup(unquote(r.text), 'html.parser')
+        for s in soup.find_all('script'):
+            if 'realname' not in str(s).lower():
+                continue
+            ptn = r'<script .*>self.__pace_f.push\(\[1,"(.*)"\]\)</script>'
+            if m := re.search(ptn, str(s)):
+                login_status = json.loads(m.group(1))['app']['user']
+                break
+        else:
+            return
+        assert login_status.pop('isLogin') is True
+        nickname = login_status['info']['nickname']
+        console.log(f'current logined as {nickname}', style='info')
+        self.login_status = nickname
+        return nickname
+
+    def get_cookie(self):
+        cookie_file = Path(__file__).with_name('cookie.pkl')
+        if cookie_file.exists():
+            self.session.cookies = pickle.loads(cookie_file.read_bytes())
+            if self.get_login_status():
+                return
+        browser = webdriver.Chrome()
+        browser.get('https://www.douyin.com/')
+        input('press enter after login...')
+        for cookie in browser.get_cookies():
+            for k in ['expiry', 'httpOnly', 'sameSite']:
+                cookie.pop(k, None)
+            self.session.cookies.set(**cookie)
+        cookie_file.write_bytes(pickle.dumps(self.session.cookies))
+        browser.quit()
+        assert self.get_login_status()
+
     def _get_xbogus(self, params: dict | str) -> str:
         assert 'X-Bogus' not in params, 'X-Bogus in params'
         if isinstance(params, dict):
@@ -65,6 +99,8 @@ class Fetcher:
         return self.js_func.call('sign', params, UA)
 
     def get(self, url: str | furl, params: dict = None):
+        if not self.login_status:
+            self.get_cookie()
         if self.enable_pause:
             self._pause()
         console.log(f'fetching {url}...', style='info')
