@@ -60,7 +60,7 @@ def parse_aweme(aweme):
                 'seo_info', 'risk_infos']:
         aweme.pop(key)
     for key in ['vtag_search', 'main_arch_common', 'music',
-                'charge_info',
+                'charge_info', 'fall_card_struct', 'incentive_item_type',
                 'enable_comment_sticker_rec', 'share_url',
                 'duet_origin_item', 'duet_origin_item_id']:
         aweme.pop(key, None)
@@ -125,9 +125,9 @@ def parse_aweme(aweme):
             assert extra['type'] not in [0, 1]
             continue
         if extra['type'] == 1:
-            assert set(extra.keys()) == {
+            assert set(extra.keys()).issubset({
                 'start', 'end', 'type', 'hashtag_name',
-                'hashtag_id', 'is_commerce', 'caption_start', 'caption_end'}
+                'hashtag_id', 'is_commerce', 'caption_start', 'caption_end'})
             tags.append(extra['hashtag_name'])
         elif extra['type'] == 0:
             extra.pop('aweme_id', None)
@@ -217,7 +217,7 @@ def parse_aweme(aweme):
             # assert result['width'] <= result['height']
     if 'caption' in result:
         assert re.sub(r'\s', '', result.pop('caption')
-                      ) == re.sub(r'\s', '', result['desc'])
+                      ) in re.sub(r'\s', '', result['desc'])
     return result
 
 
@@ -297,9 +297,9 @@ def process_media_for_vid(vid_dict):
                 assert (play_addr['height']
                         <= bit_rate[0]['play_addr']['height'])
     for b in bit_rate[1:]:
-        assert b['bit_rate'] < bit_rate[0]['bit_rate']
-        # assert (b['play_addr']['data_size']
-        #         < bit_rate[0]['play_addr']['data_size'])
+        if b['bit_rate'] > bit_rate[0]['bit_rate']:
+            console.log(
+                f'bit_rate is not maximum {b["bit_rate"], bit_rate[0]["bit_rate"]}', style='error')
         assert b['play_addr']['uri'] == uri
     assert vid_dict | bit_rate[0] == bit_rate[0] | vid_dict
     vid_dict |= bit_rate[0]

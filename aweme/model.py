@@ -140,6 +140,7 @@ class User(BaseModel):
         for k, v in user_dict.items():
             assert v or v == 0 or k == 'unknown_fields'
             if k in ['follower_count', 'max_follower_count', 'aweme_count',
+                     'following_count', 'favoriting_count',
                      'mplatform_followers_count', 'total_favorited',]:
                 continue
             if v == model_dict[k]:
@@ -451,10 +452,9 @@ class Cache(BaseModel):
         if set(d1) != set(d2):
             assert set(d1) == set(d2) | {'video_size', 'video_hash'}
         for k in d2:
-            if k in ['img_urls', 'video_url', 'aweme_from']:
+            if k in ['img_urls', 'video_url', 'aweme_from', 'digg_count']:
                 continue
             if d1[k] != d2[k]:
-                assert 'video_size' not in d2
                 assert k in ['duration', 'bit_rate', 'height',
                              'width', 'FPS', 'gear_name', 'ratio']
                 assert d1[k] > d2[k] or k in ['gear_name', 'width', 'height']
