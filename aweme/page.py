@@ -56,7 +56,7 @@ class Page:
         assert sorted(aweme_times, reverse=True) == aweme_times
         # assert sorted(aweme_ids, reverse=True) == aweme_ids
 
-    def get_following(self):
+    def get_following(self, all_info=False):
         url = furl('https://www.douyin.com/aweme/v1/web/user/following/list/')
         url.args = {
             'aid': '6383',
@@ -77,8 +77,9 @@ class Page:
                     'uid',
                     'unique_id',
                 ]
-                f = {k: v for k, v in f.items() if k in keeped_key and v not in [
-                    None, '', []]}
+                f = {k: v for k, v in f.items() if v not in [None, '', []]}
+                if not all_info:
+                    f = {k: v for k, v in f.items() if k in keeped_key}
                 f['homepage'] = f'https://www.douyin.com/user/{f["sec_uid"]}'
                 yield f
             if not js['has_more']:

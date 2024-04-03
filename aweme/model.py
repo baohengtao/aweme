@@ -31,7 +31,7 @@ class BaseModel(Model):
     class Meta:
         database = database
 
-    def __str__(self):
+    def __repr__(self):
         model = model_to_dict(self, recurse=False)
         for k, v in model.items():
             if isinstance(v, datetime):
@@ -195,6 +195,9 @@ class UserConfig(BaseModel):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)
         self.page = Page(self.user_id)
+
+    def __str__(slef):
+        return super().__repr__()
 
     @classmethod
     def from_id(cls, user_id: str | int) -> Self:
@@ -619,11 +622,20 @@ class Post(BaseModel):
             res['AwemeLocation'] = (self.latitude, self.longitude)
         return res
 
+    def __repr__(self):
+        return super().__repr__()
+
     def __str__(self):
         model = model_to_dict(self, recurse=False)
         res = {}
+        skip_keys = ['is_bytevc1', 'is_h265', 'is_image_beat', 'is_life_item',
+                     'is_source_HDR', 'is_story', 'is_video', 'gear_name', 'FPS',
+                     'ratio', 'width', 'height', 'download_mask_panel', 'activity_video_type',
+                     'group_id', 'comment_gid']
         for k, v in model.items():
             if v is None:
+                continue
+            if k in skip_keys:
                 continue
             if k in ['admire_count', 'collect_count', 'comment_count',
                      'digg_count', 'play_count', 'share_count',
