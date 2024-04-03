@@ -11,6 +11,7 @@ from rich.prompt import Confirm, Prompt
 from typer import Option, Typer
 
 from aweme import console
+from aweme.fetcher import fetcher
 from aweme.model import Artist, User, UserConfig
 from aweme.page import Page
 
@@ -23,6 +24,7 @@ app = Typer()
 @logsaver_decorator
 def user_add(max_user: int = 20,
              all_user: bool = Option(False, '--all-user', '-a')):
+    fetcher.toggle_alt(False)
     if all_user:
         max_user = None
     page = Page.get_self_page()
@@ -45,6 +47,8 @@ def user_loop(frequency: float = 2,
               download_dir: Path = default_path,
               ):
 
+    fetcher.login(alt_login=True)
+    fetcher.login(alt_login=False)
     UserConfig.update_table()
     WORKING_TIME = 20
     logsaver = LogSaver('user_loop', download_dir)
@@ -136,6 +140,7 @@ def write_meta(download_dir: Path = default_path):
 @logsaver_decorator
 def user(download_dir: Path = default_path):
     """Add user to database of users whom we want to fetch from"""
+    fetcher.toggle_alt(False)
     UserConfig.update_table()
     user = UserConfig.select().order_by(UserConfig.id.desc()).first()
     console.log(f'total {UserConfig.select().count()} users in database')

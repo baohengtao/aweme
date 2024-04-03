@@ -16,6 +16,7 @@ from bs4 import BeautifulSoup
 from exiftool import ExifToolHelper
 from furl import furl
 from requests.exceptions import ConnectionError
+from rich.prompt import Confirm
 from selenium import webdriver
 
 from aweme import console
@@ -45,8 +46,9 @@ def _get_session():
 
 class Fetcher:
     def __init__(self):
-        self.session = _get_session()
-        self.login_status = None
+        self.sess_main, self.sess_alt = _get_session(), _get_session()
+        self.load_cookie()
+        self._alt_login = None
         with Path(__file__).with_name('X-Bogus.js').open() as fp:
             ENV_NODE_JS = Path(__file__).resolve().parent.parent
             self.js_func = execjs.compile(
@@ -57,40 +59,66 @@ class Fetcher:
         self.enable_pause = True
         self.deque = deque(maxlen=5)
 
-    def get_login_status(self):
-        r = self.session.get('https://www.douyin.com/user/self')
-        soup = BeautifulSoup(unquote(r.text), 'html.parser')
-        for s in soup.find_all('script'):
-            if 'realname' not in str(s).lower():
-                continue
-            ptn = r'<script .*>self.__pace_f.push\(\[1,"(.*)"\]\)</script>'
-            if m := re.search(ptn, str(s)):
-                login_status = json.loads(m.group(1))['app']['user']
-                break
-        else:
-            return
-        assert login_status.pop('isLogin') is True
-        nickname = login_status['info']['nickname']
-        console.log(f'current logined as {nickname}', style='info')
-        self.login_status = nickname
-        return nickname
+    @property
+    def alt_login(self):
+        return self._alt_login
 
-    def get_cookie(self):
+    def toggle_alt(self, on: bool = False):
+        if self._alt_login == on:
+            return
+        self._alt_login = on
+        nickname = self.login(alt_login=on)
+        console.log(
+            f'fetcher: current logined as {nickname} (is_alt:{on})',
+            style='green on dark_green')
+
+    def load_cookie(self):
         cookie_file = Path(__file__).with_name('cookie.pkl')
-        if cookie_file.exists():
-            self.session.cookies = pickle.loads(cookie_file.read_bytes())
-            if self.get_login_status():
-                return
+        if not cookie_file.exists():
+            return
+        cookies = pickle.loads(cookie_file.read_bytes())
+        self.sess_main.cookies = cookies['main']
+        self.sess_alt.cookies = cookies['alt']
+
+    def save_cookie(self):
+        cookie_file = Path(__file__).with_name('cookie.pkl')
+        cookies = {'main': self.sess_main.cookies,
+                   'alt': self.sess_alt.cookies}
+        cookie_file.write_bytes(pickle.dumps(cookies))
+
+    def login(self, alt_login: bool = False):
+        session = self.sess_alt if alt_login else self.sess_main
+        while True:
+            r = session.get('https://www.douyin.com/user/self')
+            soup = BeautifulSoup(unquote(r.text), 'html.parser')
+            for s in soup.find_all('script'):
+                if 'realname' not in str(s).lower():
+                    continue
+                ptn = r'<script .*>self.__pace_f.push\(\[1,"(.*)"\]\)</script>'
+                if m := re.search(ptn, str(s)):
+                    login_status = json.loads(m.group(1))['app']['user']
+                    break
+            else:
+                console.log(
+                    f'cookie expired, relogin...(alt_login={alt_login})',
+                    style='error')
+                if not Confirm.ask('open browser to login?'):
+                    raise ValueError('cookie expired')
+                self.set_cookie(session)
+                continue
+            assert login_status.pop('isLogin') is True
+            return login_status['info']['nickname']
+
+    def set_cookie(self, session):
         browser = webdriver.Chrome()
         browser.get('https://www.douyin.com/')
         input('press enter after login...')
         for cookie in browser.get_cookies():
             for k in ['expiry', 'httpOnly', 'sameSite']:
                 cookie.pop(k, None)
-            self.session.cookies.set(**cookie)
-        cookie_file.write_bytes(pickle.dumps(self.session.cookies))
+            session.cookies.set(**cookie)
         browser.quit()
-        assert self.get_login_status()
+        self.save_cookie()
 
     def _get_xbogus(self, params: dict | str) -> str:
         assert 'X-Bogus' not in params, 'X-Bogus in params'
@@ -98,9 +126,12 @@ class Fetcher:
             params = urlencode(params)
         return self.js_func.call('sign', params, UA)
 
-    def get(self, url: str | furl, params: dict = None):
-        if not self.login_status:
-            self.get_cookie()
+    def get(self, url: str | furl, params: dict = None, alt_login: bool = None):
+        if alt_login is None:
+            if self.alt_login is None:
+                raise ValueError('alt_login is not set')
+            alt_login = self.alt_login
+        session = self.sess_alt if self.alt_login else self.sess_main
         if self.enable_pause:
             self._pause()
         console.log(f'fetching {url}...', style='info')
@@ -111,7 +142,7 @@ class Fetcher:
 
         while True:
             try:
-                r = self.session.get(url)
+                r = session.get(url)
                 r.raise_for_status()
             except (requests.exceptions.ConnectionError,
                     requests.exceptions.HTTPError) as e:

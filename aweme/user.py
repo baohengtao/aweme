@@ -18,7 +18,7 @@ def get_user(user_id: int | str, parse=True):
         params['sec_user_id'] = sec_user_id
 
     url = "https://www.douyin.com/aweme/v1/web/user/profile/other/"
-    response = fetcher.get(url, params=params)
+    response = fetcher.get(url, params=params, alt_login=False)
     return parse_user(response) if parse else response
 
 

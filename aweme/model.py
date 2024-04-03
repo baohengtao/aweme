@@ -19,7 +19,7 @@ from playhouse.postgres_ext import (
 from playhouse.shortcuts import model_to_dict, update_model_from_dict
 
 from aweme import console
-from aweme.fetcher import download_files
+from aweme.fetcher import download_files, fetcher
 from aweme.page import Page
 from aweme.post import get_aweme, parse_aweme
 from aweme.user import get_user
@@ -250,6 +250,7 @@ class UserConfig(BaseModel):
         self.save()
 
     def fetch_aweme(self, download_dir: Path):
+        fetcher.toggle_alt(not self.following)
         if self.aweme_fetch is None:
             self._caching_aweme_for_new()
             return
