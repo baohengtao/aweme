@@ -71,8 +71,8 @@ def user_loop(frequency: float = 2,
         elif configs := query.where(UserConfig.aweme_next_fetch < pendulum.now()):
             console.log(
                 f' {len(configs)} users satisfy fetching conditions, '
-                'Fetching 5 users whose estimated new posts is most.')
-            configs = configs[:5]
+                'Fetching 10 users whose estimated new posts is most.')
+            configs = configs[:10]
         else:
             configs = (query.limit(2).order_by(fn.COALESCE(
                 UserConfig.aweme_fetch_at,
@@ -143,7 +143,8 @@ def user(download_dir: Path = default_path):
     fetcher.toggle_alt(False)
     UserConfig.update_table()
     user = UserConfig.select().order_by(UserConfig.id.desc()).first()
-    console.log(f'total {UserConfig.select().count()} users in database')
+    cnt = UserConfig.select().where(UserConfig.following).count()
+    console.log(f'total {cnt} users in database')
     console.log(f'the latest added user is {user.username}({user.user_id})')
 
     while user_id := Prompt.ask('请输入用户名:smile:').strip():

@@ -259,8 +259,8 @@ class UserConfig(BaseModel):
             return
         if self.aweme_fetch_at:
             since = pendulum.instance(self.aweme_fetch_at)
-            estimated_post = int(since.diff().in_hours() / self.post_cycle)
-            estimated_post = f'estimated_new_posts:{estimated_post}'
+            estimated_post = since.diff().in_hours() / self.post_cycle
+            estimated_post = f'estimated_new_posts:{estimated_post:.2f}'
             msg = f' (fetch_at:{since:%y-%m-%d} {estimated_post})'
         else:
             msg = "(New user)"
@@ -277,7 +277,7 @@ class UserConfig(BaseModel):
         self.post_at = self.user.posts.order_by(
             Post.create_time.desc()).first().create_time
         self.post_cycle = self.get_post_cycle()
-        self.aweme_next_fetch = now.add(hours=self.post_cycle/2)
+        self.aweme_next_fetch = now.add(hours=self.post_cycle)
         self.save()
 
     def get_post_cycle(self) -> int:
@@ -346,7 +346,7 @@ class UserConfig(BaseModel):
             if fetch_at := (config.aweme_fetch_at or config.aweme_cache_at):
                 config.post_cycle = config.get_post_cycle()
                 config.aweme_next_fetch = fetch_at + \
-                    pendulum.duration(hours=config.post_cycle/2)
+                    pendulum.duration(hours=config.post_cycle)
 
             config.save()
 
