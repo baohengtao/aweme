@@ -452,9 +452,17 @@ class Cache(BaseModel):
         if not (self.from_page and self.from_timeline):
             return
         d1, d2 = parse_aweme(self.from_page), parse_aweme(self.from_timeline)
+        common_key = set(d1) & set(d2)
         if set(d1) != set(d2):
-            assert set(d1) == set(d2) | {'video_size', 'video_hash'}
-        for k in d2:
+            if x := (set(d2) - common_key):
+                x = {k: d2[k] for k in x}
+                console.log(
+                    f'find unknow field from timeline: {x}',
+                    style='error')
+            if x := set(d1) - common_key:
+                assert x == {'video_size', 'video_hash'}
+
+        for k in common_key:
             if k in ['img_urls', 'video_url', 'aweme_from', 'digg_count']:
                 continue
             if d1[k] != d2[k]:

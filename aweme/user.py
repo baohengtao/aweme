@@ -50,6 +50,8 @@ def parse_user(r: requests.Response):
     ]
     for key in useless_keys:
         user.pop(key)
+    for key in ['commerce_info']:
+        user.pop(key, None)
     user.pop('signature_extra', None)
     # used to display 橱窗 群聊 info etc...
     user.pop('card_entries', None)
@@ -92,9 +94,11 @@ def parse_user(r: requests.Response):
     user['follow_list_toast'] = follow_list_toast
 
     if (u := user.pop('user_permissions', None)):
-        assert u == [{'key': 'douplus_user_type', 'value': '1'}]
+        assert len(u) == 1 and len(u[0]) == 2
+        u = u[0]
+        assert u['key'] == 'douplus_user_type'
         assert 'douplus_user_type' not in user
-        user['douplus_user_type'] = 1
+        user['douplus_user_type'] = u['value']
 
     # process living
     if (lstatus := user.pop('live_status')) == 0:
@@ -109,9 +113,6 @@ def parse_user(r: requests.Response):
 
     not_match = {}
     for k, v in DICT_CMP_USER.items():
-        if k == 'commerce_info':
-            assert user.pop(k, v) == v
-            continue
 
         if user.get(k) != v:
             not_match[k] = (user.get(k), v)

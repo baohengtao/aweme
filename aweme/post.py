@@ -244,6 +244,7 @@ def process_anchor(anchor_info):
 
 def process_media(img_list, vid_dict):
     vid_dict = deepcopy(vid_dict)
+    vid_dict.pop('audio', None)
     img_list = deepcopy(img_list)
     if img_list is None:
         return process_media_for_vid(vid_dict)
