@@ -57,14 +57,14 @@ def parse_aweme(aweme):
                 'visual_search_info', 'is_use_music', 'impression_data', 'share_info',
                 'photo_search_entrance', 'authentication_token', 'interaction_stickers',
                 'entertainment_product_info',
-                'seo_info', 'risk_infos']:
+                'risk_infos']:
         aweme.pop(key)
-    for key in ['vtag_search', 'main_arch_common', 'music',
+    for key in ['vtag_search', 'main_arch_common', 'music', 'seo_info',
                 'charge_info', 'fall_card_struct', 'incentive_item_type',
                 'enable_comment_sticker_rec', 'share_url',
                 'duet_origin_item', 'duet_origin_item_id']:
         aweme.pop(key, None)
-    assert aweme.pop('preview_title') == aweme['desc']
+    # assert aweme.pop('preview_title') == aweme['desc']
     if aweme['mark_largely_following'] is False:
         assert aweme.pop('mark_largely_following') is False
     if dmp := aweme.pop('aweme_acl', None):
@@ -88,12 +88,7 @@ def parse_aweme(aweme):
     elif aweme['aweme_from'] == 'timeline':
         assert aweme.pop('guide_btn_type') == 0
         assert aweme.pop('prevent_download') is False
-        assert aweme.pop('report_action') is False
-        aweme.pop('comment_words_recommend') == {'zero_comment': None}
-        aweme.pop('guide_scene_info') == {
-            'diamond_expose_info_str': '',
-            'feed_origin_gid_info_str': '',
-            'guide_scene_type': 0}
+
         aweme.pop('xigua_base_info') == {
             'star_altar_order_id': 0, 'star_altar_type': 0, 'status': 0}
     else:
@@ -218,6 +213,12 @@ def parse_aweme(aweme):
     if 'caption' in result:
         assert re.sub(r'\s', '', result.pop('caption')
                       ) in re.sub(r'\s', '', result['desc'])
+
+    # process mix info
+    if mix_info := result.get('mix_info'):
+        for key in ['cover_url', 'share_info', 'extra']:
+            mix_info.pop(key)
+
     return result
 
 
@@ -259,7 +260,7 @@ def process_media(img_list, vid_dict):
     if 'has_watermark' in vid_dict:
         assert vid_dict.pop('has_watermark') is False
         assert vid_dict.pop('is_h265') == 0
-    assert vid_dict.pop('meta') == ''
+    vid_dict.pop('meta')
     assert vid_dict.pop('ratio') == 'default'
     vid_dict = {k: v for k, v in vid_dict.items() if v not in [None, [], {}]}
     assert set(vid_dict.keys()) == {'height', 'width'},  set(vid_dict.keys())

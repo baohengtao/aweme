@@ -46,7 +46,8 @@ def parse_user(r: requests.Response):
         'share_info', 'white_cover_url',
         'cover_and_head_image_info', 'cover_url', 'cover_colour',
         'avatar_168x168', 'avatar_300x300', 'avatar_medium', 'avatar_thumb',
-        'signature_display_lines', 'enterprise_user_info', 'commerce_user_info'
+        'signature_display_lines', 'urge_detail',
+        'enterprise_user_info', 'commerce_user_info'
     ]
     for key in useless_keys:
         user.pop(key)
@@ -98,7 +99,7 @@ def parse_user(r: requests.Response):
         u = u[0]
         assert u['key'] == 'douplus_user_type'
         assert 'douplus_user_type' not in user
-        user['douplus_user_type'] = u['value']
+        user['douplus_user_type'] = int(u['value'])
 
     # process living
     if (lstatus := user.pop('live_status')) == 0:
@@ -150,4 +151,4 @@ def parse_user(r: requests.Response):
     user2 = {k: user[k] for k in user if k not in reorder}
     user = user1 | user2
 
-    return {k: v for k, v in user.items() if v not in [None, '', []]}
+    return {k: v for k, v in user.items() if v not in [None, '', [], '{}', '0']}

@@ -73,7 +73,6 @@ DICT_CMP_USER = {
     'total_favorited_correction_threshold': -1,
     'twitter_id': '',
     'twitter_name': '',
-    'urge_detail': {'user_urged': 0},
     'video_cover': {},
     'video_icon': {'height': 720, 'uri': '', 'url_list': [], 'width': 720},
     'watch_status': False,
@@ -109,7 +108,7 @@ DICT_CMP_AWEME = {
         'item_detail_entry': False,
         'press_entry': False,
         'toast_guide': False},
-    'common_bar_info': '[]',
+    # 'common_bar_info': '[]',
     'component_info_v2': '{"desc_lines_limit":0,"hide_marquee":false}',
     'disable_relation_bar': 0,
     'distribute_circle': {
@@ -120,13 +119,10 @@ DICT_CMP_AWEME = {
     'image_crop_ctrl': 0,
     'is_collects_selected': 0,
     'is_duet_sing': False,
-    'is_share_post': False,
     'item_title': '',
     'item_warn_notification': {'type': 0, 'show': False, 'content': ''},
 
     'series_paid_info': {'series_paid_status': 0, 'item_price': 0},
-    'should_open_ad_report': False,
-
     'user_recommend_status': 0,
 
 }

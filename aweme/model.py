@@ -112,7 +112,12 @@ class User(BaseModel):
             model = cls.get_or_none(sec_uid=user_id)
         if model and not update:
             return model
-        user_dict = get_user(user_id)
+        for _ in range(3):
+            user_dict = get_user(user_id)
+            if not model or user_dict['following'] == model.following:
+                break
+        if not model:
+            assert user_dict['following'] is True
         return cls.upsert(user_dict)
 
     @classmethod
@@ -123,7 +128,7 @@ class User(BaseModel):
             unknown[k] = user_dict.pop(k)
         if unknown:
             console.log(
-                f'find unknow fields: {unknown}', style='warning')
+                f'find unknow fields: {unknown}', style='info')
         assert 'unknown_fields' not in user_dict
         user_dict['unknown_fields'] = unknown or None
 
@@ -557,7 +562,7 @@ class Post(BaseModel):
             unknown[k] = aweme_dict.pop(k)
         if unknown:
             console.log(
-                f'find unknow fields: {unknown}', style='warning')
+                f'find unknow fields: {unknown}', style='info')
         assert 'unknown_fields' not in aweme_dict
         aweme_dict['unknown_fields'] = unknown or None
         aweme_dict['username'] = User.get_by_id(aweme_dict['user_id']).username
