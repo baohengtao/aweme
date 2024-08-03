@@ -47,12 +47,16 @@ def parse_user(r: requests.Response):
         'cover_and_head_image_info', 'cover_url', 'cover_colour',
         'avatar_168x168', 'avatar_300x300', 'avatar_medium', 'avatar_thumb',
         'signature_display_lines', 'urge_detail', 'sync_to_toutiao',
-        'enterprise_user_info', 'commerce_user_info'
+        'enterprise_user_info', 'commerce_user_info', 'signature_language',
     ]
     for key in useless_keys:
         user.pop(key)
-    for key in ['commerce_info', 'card_entries', 'signature_extra',
-                'official_cooperation']:
+    useless_keys_opt = [
+        'commerce_info', 'card_entries', 'signature_extra',
+        'account_info_url', 'iso_country_code', 'official_cooperation',
+        'im_primary_role_id', 'im_role_ids', 'role_id',
+    ]
+    for key in useless_keys_opt:
         user.pop(key, None)
 
     # process short_id
@@ -147,9 +151,9 @@ def parse_user(r: requests.Response):
         'school_name', 'age', 'gender', 'following', 'following_count',
         'follower_count', 'max_follower_count', 'aweme_count', 'forward_count',
         'favoriting_count', 'total_favorited', 'show_favorite_list',
-        'city',  'district', 'ip', 'country', 'province', 'iso_country_code',
-        'homepage', 'avatar', 'signature_language', 'im_primary_role_id',
-        'im_role_ids', 'publish_landing_tab'
+        'city',  'district', 'ip', 'country', 'province',
+        'homepage', 'avatar',
+        'publish_landing_tab'
     ]
     user1 = {k: user[k] for k in reorder if k in user}
     user2 = {k: user[k] for k in user if k not in reorder}
