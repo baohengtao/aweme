@@ -80,12 +80,6 @@ class Fetcher:
         self.sess_main.cookies = cookies['main']
         self.sess_alt.cookies = cookies['alt']
 
-    def save_cookie(self):
-        cookie_file = Path(__file__).with_name('cookie.pkl')
-        cookies = {'main': self.sess_main.cookies,
-                   'alt': self.sess_alt.cookies}
-        cookie_file.write_bytes(pickle.dumps(cookies))
-
     def login(self, alt_login: bool = False):
         session = self.sess_alt if alt_login else self.sess_main
         while True:
@@ -104,12 +98,12 @@ class Fetcher:
                     style='error')
                 if not Confirm.ask('open browser to login?'):
                     raise ValueError('cookie expired')
-                self.set_cookie(session)
+                self._set_cookie(session)
                 continue
             assert login_status.pop('isLogin') is True
             return login_status['info']['nickname']
 
-    def set_cookie(self, session):
+    def _set_cookie(self, session):
         browser = webdriver.Chrome()
         browser.get('https://www.douyin.com/')
         input('press enter after login...')
@@ -118,7 +112,10 @@ class Fetcher:
                 cookie.pop(k, None)
             session.cookies.set(**cookie)
         browser.quit()
-        self.save_cookie()
+        cookie_file = Path(__file__).with_name('cookie.pkl')
+        cookies = {'main': self.sess_main.cookies,
+                   'alt': self.sess_alt.cookies}
+        cookie_file.write_bytes(pickle.dumps(cookies))
 
     def _get_xbogus(self, params: dict | str) -> str:
         assert 'X-Bogus' not in params, 'X-Bogus in params'
@@ -131,7 +128,7 @@ class Fetcher:
             if self.alt_login is None:
                 raise ValueError('alt_login is not set')
             alt_login = self.alt_login
-        session = self.sess_alt if self.alt_login else self.sess_main
+        session = self.sess_alt if alt_login else self.sess_main
         if self.enable_pause:
             self._pause()
         console.log(f'fetching {url}...', style='info')
@@ -195,6 +192,8 @@ class Fetcher:
 
 
 fetcher = Fetcher()
+sess = requests.Session()
+sess.get('https://www.douyin.com/', headers={'User-Agent': UA})
 
 
 def download_single_file(
@@ -214,7 +213,7 @@ def download_single_file(
         console.log(f'downloading {img}...', style="dim")
     while True:
         try:
-            r = requests.get(url, headers={'User-Agent': UA})
+            r = sess.get(url, headers={'User-Agent': UA})
         except ConnectionError as e:
             period = 60
             console.log(
@@ -236,6 +235,13 @@ def download_single_file(
             console.log(f"{url}, {r.status_code}", style="error")
             time.sleep(15)
             console.log(f'retrying download for {url}...')
+            continue
+
+        elif not r.content:
+            console.log(f"empty response for {url}", style="error")
+            time.sleep(15)
+            console.log(f'retrying download for {url}...')
+            sess.get('https://www.douyin.com/', headers={'User-Agent': UA})
             continue
 
         if int(r.headers['Content-Length']) != len(r.content):

@@ -17,6 +17,7 @@ from playhouse.postgres_ext import (
     TextField
 )
 from playhouse.shortcuts import model_to_dict, update_model_from_dict
+from rich.prompt import Confirm
 
 from aweme import console
 from aweme.fetcher import download_files, fetcher
@@ -116,6 +117,10 @@ class User(BaseModel):
             user_dict = get_user(user_id)
             if not model or user_dict['following'] == model.following:
                 break
+        else:
+            if model.following and not Confirm.ask(
+                    f'{model.username} unfollowed?'):
+                raise ValueError
         if not model:
             assert user_dict['following'] is True
         return cls.upsert(user_dict)

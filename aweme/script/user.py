@@ -28,7 +28,13 @@ def user_add(max_user: int = 20,
     if all_user:
         max_user = None
     page = Page.get_self_page()
-    uids = {u.user_id for u in UserConfig.select().where(UserConfig.following)}
+    query = UserConfig.select().where(
+        UserConfig.following).order_by(UserConfig.id.desc())
+    config = query[0]
+    console.log(
+        f'{query.count()} following users in UserConfig, '
+        f'latest user is {config.username} ({config.nickname})')
+    uids = {u.user_id for u in query}
     uids_following = [int(u['uid']) for u
                       in islice(page.get_following(), max_user)]
     to_add = [uid for uid in uids_following if uid not in uids]
