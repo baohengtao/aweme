@@ -46,16 +46,14 @@ def parse_user(r: requests.Response):
         'share_info', 'white_cover_url',
         'cover_and_head_image_info', 'cover_url', 'cover_colour',
         'avatar_168x168', 'avatar_300x300', 'avatar_medium', 'avatar_thumb',
-        'signature_display_lines', 'urge_detail',
+        'signature_display_lines', 'urge_detail', 'sync_to_toutiao',
         'enterprise_user_info', 'commerce_user_info'
     ]
     for key in useless_keys:
         user.pop(key)
-    for key in ['commerce_info']:
+    for key in ['commerce_info', 'card_entries', 'signature_extra',
+                'official_cooperation']:
         user.pop(key, None)
-    user.pop('signature_extra', None)
-    # used to display 橱窗 群聊 info etc...
-    user.pop('card_entries', None)
 
     # process short_id
     if (short_id := user.pop('short_id')) != '0':
@@ -100,13 +98,14 @@ def parse_user(r: requests.Response):
         assert u['key'] == 'douplus_user_type'
         assert 'douplus_user_type' not in user
         user['douplus_user_type'] = int(u['value'])
+    assert user.pop('favorite_permission') == 1 - user['show_favorite_list']
 
     # process living
     if (lstatus := user.pop('live_status')) == 0:
         assert user.pop('room_id') == 0
     else:
         assert lstatus == 1
-        assert user.pop('room_id') > 0
+        assert user.pop('room_id') == int(user.pop('room_id_str')) > 0
         assert user.pop('room_data')
         console.log('🎀 find living: '
                     f'[link={user["homepage"]}]{user["nickname"]}[/link]',
@@ -134,6 +133,11 @@ def parse_user(r: requests.Response):
     assert 'followed' not in user
     user['following'] = bool(follow_status)
     user['followed'] = bool(follower_status)
+
+    if not user['following']:
+        assert user.pop('follow_guide') is True
+    else:
+        assert user.pop('is_top') == 0
 
     if remark := user.pop('remark_name', None):
         assert 'username' not in user

@@ -53,7 +53,6 @@ DICT_CMP_USER = {
     'is_series_user': False,
     'is_sharing_profile_user': 0,
     'is_star': False,
-    'is_top': 0,
     'life_story_block': {'life_story_block': False},
     'original_musician': {'digg_count': 0,
                           'music_count': 0,
@@ -67,7 +66,7 @@ DICT_CMP_USER = {
     'risk_notice_text': '',
     'series_count': 0,
     'special_follow_status': 0,
-    'sync_to_toutiao': 0,
+    # 'sync_to_toutiao': 0,
     'tab_settings': {'private_tab': {'private_tab_style': 1,
                                      'show_private_tab': False}},
     'total_favorited_correction_threshold': -1,
@@ -82,7 +81,7 @@ DICT_CMP_USER = {
     'enable_ai_double': 0,
     'enable_wish': False,
     'enterprise_verify_reason': '',
-    'favorite_permission': 1,
+    # 'favorite_permission': 1,
     'dynamic_cover': {},
     'is_activity_user': False,
     'follower_request_status': 0,
@@ -90,7 +89,7 @@ DICT_CMP_USER = {
     'message_chat_entry': True,
     'user_not_see': 0,
     'user_not_show': 1,
-
+    'profile_show': {'identify_auth_infos': None},
     'youtube_channel_title': ''}
 
 DICT_CMP_AWEME = {
@@ -119,7 +118,7 @@ DICT_CMP_AWEME = {
     'image_crop_ctrl': 0,
     'is_collects_selected': 0,
     'is_duet_sing': False,
-    'item_title': '',
+    # 'item_title': '',
     'item_warn_notification': {'type': 0, 'show': False, 'content': ''},
 
     'series_paid_info': {'series_paid_status': 0, 'item_price': 0},
