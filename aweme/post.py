@@ -57,7 +57,7 @@ def parse_aweme(aweme):
         'image_album_music_info', 'video_control',
         'visual_search_info', 'is_use_music', 'impression_data', 'share_info',
         'photo_search_entrance', 'authentication_token', 'interaction_stickers',
-        'entertainment_product_info',
+        'entertainment_product_info', 'comment_permission_info', 'boost_status',
         'risk_infos']
     for key in useless_keys:
         aweme.pop(key)

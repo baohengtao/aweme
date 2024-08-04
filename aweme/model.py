@@ -567,10 +567,12 @@ class Post(BaseModel):
         model_dict['user_id'] = model_dict.pop('user')
         for k, v in aweme_dict.items():
             assert v or v == 0 or k == 'unknown_fields'
-            if v == model_dict[k] or k in ['img_urls', 'video_url']:
+            if (ori := model_dict[k]) == v or k in ['img_urls', 'video_url']:
+                continue
+            if k == 'unknown_fields':
                 continue
             console.log(f'+{k}: {v}', style='green bold on dark_green')
-            if (ori := model_dict[k]) is not None:
+            if ori is not None:
                 console.log(f'-{k}: {ori}', style='red bold on dark_red')
         cls.update(aweme_dict).where(cls.id == id).execute()
         return cls.get(id=id)
@@ -678,17 +680,10 @@ class Location(BaseModel):
             if k in address:
                 address[k] = int(address[k])
 
-        if not (model := cls.get_or_none(id=address['id'])):
+        if not cls.get_or_none(id=address['id']):
             cls.insert(address).execute()
             return cls.get(id=address['id'])
 
-        model_dict = model_to_dict(model)
-        for k, v in address.items():
-            if v == model_dict[k]:
-                continue
-            console.log(f'+{k}: {v}', style='green bold on dark_green')
-            if (ori := model_dict[k]) is not None:
-                console.log(f'-{k}: {ori}', style='red bold on dark_red')
         cls.update(address).where(cls.id == address['id']).execute()
         return cls.get(id=address['id'])
 
