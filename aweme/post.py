@@ -59,7 +59,6 @@ def parse_aweme(aweme):
         'photo_search_entrance', 'authentication_token', 'interaction_stickers',
         'entertainment_product_info', 'comment_permission_info', 'boost_status',
         'risk_infos', 'xigua_base_info',  'status',
-
     ]
     for key in useless_keys:
         aweme.pop(key)
@@ -68,7 +67,9 @@ def parse_aweme(aweme):
         'vtag_search', 'main_arch_common', 'music', 'seo_info',
         'charge_info', 'fall_card_struct', 'incentive_item_type',
         'enable_comment_sticker_rec', 'share_url',
-        'duet_origin_item', 'duet_origin_item_id']
+        'duet_origin_item', 'duet_origin_item_id',
+        'guide_scene_info', 'should_open_ad_report', 'is_share_post'
+    ]
     for key in useless_keys_opt:
         aweme.pop(key, None)
 
@@ -81,19 +82,8 @@ def parse_aweme(aweme):
     else:
         aweme['download_mask_panel'] = 0
 
-    if aweme['aweme_from'] == 'page':
-        assert aweme.pop('is_top') == 0
-        assert aweme.pop('is_ads') is False
-        assert aweme.pop('rate') in [10, 12]
-        if 'descendants' in aweme:
-            assert aweme.pop('descendants') == {
-                'notify_msg': '头条', 'platforms': ['toutiao']}
-        aweme.pop('cooperation_info', None)
-    elif aweme['aweme_from'] == 'timeline':
-        assert aweme.pop('guide_btn_type') == 0
-        assert aweme.pop('prevent_download') is False
-    else:
-        assert False
+    assert aweme.pop('guide_btn_type') == 0
+    assert aweme.pop('prevent_download') is False
 
     for k, v in DICT_CMP_AWEME.items():
         if k not in aweme:
