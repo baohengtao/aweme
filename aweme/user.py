@@ -70,6 +70,18 @@ def parse_user(r: requests.Response):
         assert ip.startswith('IP属地：')
         assert 'ip' not in user
         user['ip'] = ip.removeprefix('IP属地：')
+
+    # process location
+    locs = [user.pop('province', None), user.pop(
+        'city', None), user.pop('district', None)]
+    if (location := user.pop('country', None)) == '中国':
+        assert any(locs)
+        if locs[0] == locs[1]:
+            locs[0] = None
+        location = ''.join(loc for loc in locs if loc)
+    assert 'location' not in user
+    user['location'] = location
+
     # process age
     age = user.pop('user_age')
     if (b := user.pop('birthday_hide_level')) == 1:
