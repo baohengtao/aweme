@@ -70,7 +70,7 @@ def parse_aweme(aweme):
         'duet_origin_item', 'duet_origin_item_id',
         'guide_scene_info', 'should_open_ad_report', 'is_share_post',
         'report_action', 'comment_words_recommend', 'common_bar_info',
-        'is_ads',
+        'is_ads', 'aweme_acl',
     ]
     for key in useless_keys_opt:
         aweme.pop(key, None)
@@ -78,12 +78,6 @@ def parse_aweme(aweme):
     assert aweme.pop('preview_title', '') in aweme['desc']
     if aweme['mark_largely_following'] is False:
         assert aweme.pop('mark_largely_following') is False
-    if dmp := aweme.pop('aweme_acl', None):
-        assert dmp == {'download_mask_panel': {'code': 1, 'show_type': 0}}
-        aweme['download_mask_panel'] = 1
-    else:
-        aweme['download_mask_panel'] = 0
-
     assert aweme.pop('guide_btn_type') == 0
     assert aweme.pop('prevent_download') is False
 

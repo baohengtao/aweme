@@ -526,7 +526,6 @@ class Post(BaseModel):
     danmaku_cnt = IntegerField(null=True)
     original = IntegerField()
     preview_video_status = IntegerField()
-    download_mask_panel = IntegerField()
     group_id = BigIntegerField()
     comment_gid = BigIntegerField()
     unknown_fields = JSONField(null=True)
@@ -638,7 +637,7 @@ class Post(BaseModel):
         res = {}
         skip_keys = ['is_bytevc1', 'is_h265', 'is_image_beat', 'is_life_item',
                      'is_source_HDR', 'is_story', 'is_video', 'gear_name', 'FPS',
-                     'ratio', 'width', 'height', 'download_mask_panel', 'activity_video_type',
+                     'ratio', 'width', 'height',  'activity_video_type',
                      'group_id', 'comment_gid']
         for k, v in model.items():
             if v is None:
