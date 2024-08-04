@@ -58,7 +58,9 @@ def parse_aweme(aweme):
         'visual_search_info', 'is_use_music', 'impression_data', 'share_info',
         'photo_search_entrance', 'authentication_token', 'interaction_stickers',
         'entertainment_product_info', 'comment_permission_info', 'boost_status',
-        'risk_infos']
+        'risk_infos', 'xigua_base_info',  'status',
+
+    ]
     for key in useless_keys:
         aweme.pop(key)
 
@@ -81,33 +83,17 @@ def parse_aweme(aweme):
 
     if aweme['aweme_from'] == 'page':
         assert aweme.pop('is_top') == 0
-        assert aweme['status'].pop('aweme_id') == aweme['aweme_id']
         assert aweme.pop('is_ads') is False
         assert aweme.pop('rate') in [10, 12]
         if 'descendants' in aweme:
             assert aweme.pop('descendants') == {
                 'notify_msg': '头条', 'platforms': ['toutiao']}
-        assert aweme.pop('xigua_base_info') == {
-            'item_id': 0, 'star_altar_order_id': 0,
-            'star_altar_type': 0, 'status': 0}
         aweme.pop('cooperation_info', None)
     elif aweme['aweme_from'] == 'timeline':
         assert aweme.pop('guide_btn_type') == 0
         assert aweme.pop('prevent_download') is False
-
-        aweme.pop('xigua_base_info') == {
-            'star_altar_order_id': 0, 'star_altar_type': 0, 'status': 0}
     else:
         assert False
-    assert aweme.pop('status') == {
-        'allow_share': True,
-        'in_reviewing': False,
-        'is_delete': False,
-        'is_prohibited': False,
-        'listen_video_status': 0,
-        'part_see': 0,
-        'private_status': 0,
-        'review_result': {'review_status': 0}}
 
     for k, v in DICT_CMP_AWEME.items():
         if k not in aweme:
