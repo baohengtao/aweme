@@ -53,17 +53,23 @@ def parse_aweme(aweme):
     aweme = deepcopy(aweme)
 
     # remove useless keys
-    for key in ['image_album_music_info', 'video_control',
-                'visual_search_info', 'is_use_music', 'impression_data', 'share_info',
-                'photo_search_entrance', 'authentication_token', 'interaction_stickers',
-                'entertainment_product_info',
-                'risk_infos']:
+    useless_keys = [
+        'image_album_music_info', 'video_control',
+        'visual_search_info', 'is_use_music', 'impression_data', 'share_info',
+        'photo_search_entrance', 'authentication_token', 'interaction_stickers',
+        'entertainment_product_info',
+        'risk_infos']
+    for key in useless_keys:
         aweme.pop(key)
-    for key in ['vtag_search', 'main_arch_common', 'music', 'seo_info',
-                'charge_info', 'fall_card_struct', 'incentive_item_type',
-                'enable_comment_sticker_rec', 'share_url',
-                'duet_origin_item', 'duet_origin_item_id']:
+
+    useless_keys_opt = [
+        'vtag_search', 'main_arch_common', 'music', 'seo_info',
+        'charge_info', 'fall_card_struct', 'incentive_item_type',
+        'enable_comment_sticker_rec', 'share_url',
+        'duet_origin_item', 'duet_origin_item_id']
+    for key in useless_keys_opt:
         aweme.pop(key, None)
+
     # assert aweme.pop('preview_title') == aweme['desc']
     if aweme['mark_largely_following'] is False:
         assert aweme.pop('mark_largely_following') is False

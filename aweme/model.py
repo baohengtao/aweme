@@ -534,11 +534,8 @@ class Post(BaseModel):
 
     @classmethod
     def from_id(cls, aweme_id: int, update=False):
-        if not update and (awe := cls.get_or_none(id=aweme_id)):
-            return awe
-        else:
-            aweme_dict = Cache.from_id(aweme_id, update=update)
-            return cls.upsert(aweme_dict)
+        aweme_dict = Cache.from_id(aweme_id, update=update)
+        return cls.upsert(aweme_dict)
 
     @classmethod
     def upsert(cls, aweme_dict: dict) -> Self:
