@@ -468,8 +468,8 @@ class Cache(BaseModel):
                 continue
             if d1[k] != d2[k]:
                 assert k in ['duration', 'bit_rate', 'height',
-                             'width', 'FPS', 'gear_name', 'ratio']
-                assert d1[k] > d2[k] or k in ['gear_name', 'width', 'height']
+                             'width',]
+                assert d1[k] > d2[k] or k in ['width', 'height']
 
 
 class Post(BaseModel):
@@ -507,20 +507,13 @@ class Post(BaseModel):
     bit_rate = IntegerField(null=True)
     height = IntegerField(null=True)
     width = IntegerField(null=True)
-    is_source_HDR = IntegerField(null=True)
-    is_long_vide = IntegerField(null=True)
     is_video = BooleanField()
-    is_h265 = BooleanField(null=True)
-    is_bytevc1 = BooleanField(null=True)
     is_life_item = BooleanField()
     is_story = BooleanField()
     is_image_beat = BooleanField()
     is_multi_content = IntegerField(null=True)
     category_da = IntegerField(null=True)
 
-    FPS = IntegerField(null=True)
-    gear_name = CharField(null=True)
-    ratio = CharField(null=True)
     aweme_from = CharField()
     aweme_type = CharField()
     danmaku_cnt = IntegerField(null=True)
@@ -635,9 +628,9 @@ class Post(BaseModel):
     def __str__(self):
         model = model_to_dict(self, recurse=False)
         res = {}
-        skip_keys = ['is_bytevc1', 'is_h265', 'is_image_beat', 'is_life_item',
-                     'is_source_HDR', 'is_story', 'is_video', 'gear_name', 'FPS',
-                     'ratio', 'width', 'height',  'activity_video_type',
+        skip_keys = ['is_image_beat', 'is_life_item',
+                     'is_story', 'is_video',
+                     'width', 'height',  'activity_video_type',
                      'group_id', 'comment_gid']
         for k, v in model.items():
             if v is None:

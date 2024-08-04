@@ -298,16 +298,14 @@ def process_media_for_vid(vid_dict):
     vid_dict['url'] = url
 
     # pop useless keys
-    for k in ['video_extra', 'file_cs', 'url_key']:
+    for k in ['video_extra', 'file_cs', 'url_key', 'is_long_video']:
         vid_dict.pop(k, None)
     assert vid_dict.pop('HDR_bit') == ''
     assert vid_dict.pop('HDR_type') == ''
     assert vid_dict.pop('video_model') == ''
-    # assert vid_dict.pop('is_h265') == 0
-    # assert vid_dict.pop('ratio') in ['1080p', '720p', '540p']
-    # assert vid_dict.pop('gear_name') in [
-    #     'adapt_1080_0', 'normal_1080_0', 'normal_720_0', 'normal_540_0']
     vid_dict.pop('quality_type')
+    for key in ['is_h265', 'is_bytevc1', 'FPS', 'is_source_HDR', 'gear_name', 'ratio']:
+        vid_dict.pop(key)
 
     result = {
         'video_id': vid_dict.pop('uri'),
@@ -318,14 +316,7 @@ def process_media_for_vid(vid_dict):
         'bit_rate': vid_dict.pop('bit_rate'),
         'height': vid_dict.pop('height'),
         'width': vid_dict.pop('width'),
-        'is_source_HDR': vid_dict.pop('is_source_HDR'),
-        'is_long_vide': vid_dict.pop('is_long_video', None),
         'is_video': True,
-        'is_h265': vid_dict.pop('is_h265'),
-        'is_bytevc1': vid_dict.pop('is_bytevc1'),
-        'FPS': vid_dict.pop('FPS'),
-        'gear_name': vid_dict.pop('gear_name'),
-        'ratio': vid_dict.pop('ratio')
     }
     assert not vid_dict, vid_dict
     return result
