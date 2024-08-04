@@ -68,12 +68,14 @@ def parse_aweme(aweme):
         'charge_info', 'fall_card_struct', 'incentive_item_type',
         'enable_comment_sticker_rec', 'share_url',
         'duet_origin_item', 'duet_origin_item_id',
-        'guide_scene_info', 'should_open_ad_report', 'is_share_post'
+        'guide_scene_info', 'should_open_ad_report', 'is_share_post',
+        'report_action', 'comment_words_recommend', 'common_bar_info',
+        'is_ads',
     ]
     for key in useless_keys_opt:
         aweme.pop(key, None)
 
-    # assert aweme.pop('preview_title') == aweme['desc']
+    assert aweme.pop('preview_title', '') in aweme['desc']
     if aweme['mark_largely_following'] is False:
         assert aweme.pop('mark_largely_following') is False
     if dmp := aweme.pop('aweme_acl', None):
