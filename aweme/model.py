@@ -296,9 +296,15 @@ class UserConfig(BaseModel):
 
     def _save_aweme(self, download_dir: Path) -> Iterator[dict]:
         user_root = 'User' if (
-            self.photos_num and self.aweme_fetch_at) else 'New'
+            self.photos_num and self.aweme_fetch_at) else 'NewInit'
+        if self.aweme_fetch_at and user_root == 'NewInit':
+            if not (download_dir / user_root / self.username).exists():
+                user_root = 'New'
         img_dir = download_dir / user_root / self.username
-        vid_dir = download_dir / 'mp4' / user_root
+        if user_root == 'NewInit':
+            vid_dir = img_dir
+        else:
+            vid_dir = download_dir / 'mp4' / user_root
         since = self.aweme_fetch_at or pendulum.from_timestamp(0)
         console.log(f'fetching aweme from {since:%y-%m-%d}')
         aweme_ids = []
