@@ -525,12 +525,12 @@ class Post(BaseModel):
     activity_video_type = IntegerField()
 
     @classmethod
-    def from_id(cls, aweme_id: int, update=False):
+    def from_id(cls, aweme_id: int, update=False, ignore_unknow=True) -> Self:
         aweme_dict = Cache.from_id(aweme_id, update=update)
-        return cls.upsert(aweme_dict)
+        return cls.upsert(aweme_dict, ignore_unknow)
 
     @classmethod
-    def upsert(cls, aweme_dict: dict) -> Self:
+    def upsert(cls, aweme_dict: dict, ignore_unknow=False) -> Self:
         if address := aweme_dict.pop('address', None):
             loc_info = Location.upsert(address).info
             desc = aweme_dict.get('desc', '').strip()
@@ -545,7 +545,7 @@ class Post(BaseModel):
         unknown = {}
         for k in (set(aweme_dict) - set(cls._meta.columns)):
             unknown[k] = aweme_dict.pop(k)
-        if unknown:
+        if unknown and not ignore_unknow:
             console.log(
                 f'find unknow fields: {unknown}', style='info')
         assert 'unknown_fields' not in aweme_dict
