@@ -219,7 +219,7 @@ class UserConfig(BaseModel):
             is_top = aweme.pop('is_top')
             assert is_top in [0, 1]
             is_tops.append(is_top)
-            aweme = Cache.add_cache(aweme).parse()
+            aweme = Cache.upsert(aweme).parse()
             if (create_time := aweme['create_time']) < since:
                 if is_top:
                     console.log('skip top aweme')
@@ -413,28 +413,30 @@ class Cache(BaseModel):
     from_timeline = JSONField(null=True)
     from_page = JSONField(null=True)
     blog_url = TextField()
+    added_at = DateTimeTZField(null=True)
+    updated_at = DateTimeTZField(null=True)
 
     @classmethod
     def from_id(cls, aweme_id: int, update=False) -> dict:
         if not update and (cache := cls.get_or_none(id=aweme_id)):
             return cache.parse()
         cache = get_aweme(aweme_id)
-        cache = cls.add_cache(cache)
+        cache = cls.upsert(cache)
         return cache.parse()
 
     def parse(self):
         self._check_parse()
-        if self.from_page:
-            return parse_aweme(self.from_page)
-        else:
-            assert self.from_timeline
-            aweme = parse_aweme(self.from_timeline)
-            if aweme['is_video'] and 'video_size' not in aweme:
-                return self.from_id(self.id, update=True)
-            return aweme
+        aweme = parse_aweme(self.from_page or self.from_timeline)
+        assert 'updated_at' not in aweme
+        assert 'added_at' not in aweme
+        if self.updated_at:
+            aweme['updated_at'] = self.updated_at
+        if self.added_at:
+            aweme['added_at'] = self.added_at
+        return aweme
 
     @classmethod
-    def add_cache(cls, aweme: dict) -> Self:
+    def upsert(cls, aweme: dict) -> Self:
         aweme_id, user_id = aweme['aweme_id'], aweme['author_user_id']
         if aweme['images']:
             blog_url = f'https://www.douyin.com/note/{aweme["aweme_id"]}'
@@ -448,8 +450,10 @@ class Cache(BaseModel):
             row['from_timeline'] = aweme
         if (cache := cls.get_or_none(id=aweme_id)):
             update_model_from_dict(cache, row)
+            cache.updated_at = pendulum.now()
             cache.save()
         else:
+            row['added_at'] = pendulum.now()
             cls.insert(row).execute()
         cache = cls.get_by_id(aweme_id)
         cache._check_parse()
@@ -529,6 +533,8 @@ class Post(BaseModel):
     comment_gid = BigIntegerField()
     unknown_fields = JSONField(null=True)
     activity_video_type = IntegerField()
+    added_at = DateTimeTZField(null=True)
+    updated_at = DateTimeTZField(null=True)
 
     @classmethod
     def from_id(cls, aweme_id: int, update=False, ignore_unknow=True) -> Self:
