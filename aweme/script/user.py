@@ -178,17 +178,17 @@ def user(download_dir: Path = default_path):
 
 
 @app.command()
-def database_clean():
-    uids_no_photo = {
-        artist.user_id for artist in Artist if artist.photos_num == 0}
-    uids_no_photo -= {u.user_id for u in UserConfig}
-    if not uids_no_photo:
-        return
-    users = User.select().where(User.id.in_(uids_no_photo))
-    for u in users:
-        console.log(u, '\n')
+def clean_database():
+    for u in User:
+        if (u.artist and u.artist[0].photos_num) or u.config:
+            continue
+        console.log(u)
+        for n in itertools.chain(u.posts, u.artist):
+            console.log(n, '\n')
+
         if Confirm.ask(f'是否删除{u.username}({u.id})？', default=False):
             for n in itertools.chain(u.posts, u.artist):
                 n.delete_instance()
             u.delete_instance()
             console.log(f'用户{u.username}已删除')
+

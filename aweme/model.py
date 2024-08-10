@@ -175,7 +175,7 @@ class User(BaseModel):
 
 
 class UserConfig(BaseModel):
-    user = ForeignKeyField(User, backref="configs", unique=True)
+    user = ForeignKeyField(User, backref="config", unique=True)
     username = CharField()
     nickname = CharField()
     following = BooleanField()
