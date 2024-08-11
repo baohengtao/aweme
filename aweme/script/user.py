@@ -12,7 +12,7 @@ from typer import Option, Typer
 
 from aweme import console
 from aweme.fetcher import fetcher
-from aweme.model import Artist, User, UserConfig
+from aweme.model import User, UserConfig
 from aweme.page import Page
 
 from .helper import LogSaver, default_path, logsaver_decorator, print_command

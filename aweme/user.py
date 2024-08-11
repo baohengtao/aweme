@@ -1,4 +1,4 @@
-import requests
+import httpx
 
 from aweme import console
 from aweme.fetcher import fetcher
@@ -22,7 +22,7 @@ def get_user(user_id: int | str, parse=True):
     return parse_user(response) if parse else response
 
 
-def parse_user(r: requests.Response):
+def parse_user(r: httpx.Response):
     # process js
     js = r.json()
     assert js.pop('status_code') == 0

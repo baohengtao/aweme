@@ -1,5 +1,6 @@
 import hashlib
 import json
+import logging
 import pickle
 import random
 import re
@@ -11,22 +12,22 @@ from typing import Iterable
 from urllib.parse import unquote, urlencode
 
 import execjs
-import requests
+import httpx
 from bs4 import BeautifulSoup
 from exiftool import ExifToolHelper
 from furl import furl
-from requests.exceptions import ConnectionError
 from rich.prompt import Confirm
 from selenium import webdriver
 
 from aweme import console
 
 UA = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+httpx_logger = logging.getLogger("httpx")
+httpx_logger.disabled = True
 
 
 def _get_session():
-    session = requests.session()
-    session.headers = {
+    headers = {
         "authority": "www.douyin.com",
         "sec-ch-ua": '"Not_A Brand";v="8", "Chromium";v="120"',
         "accept": "application/json, text/plain, */*",
@@ -41,13 +42,19 @@ def _get_session():
         "accept-encoding": "gzip, deflate, br",
         "accept-language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
     }
-    return session
+    cookie_file = Path(__file__).with_name('cookie.pkl')
+    if cookie_file.exists():
+        cookies = pickle.loads(cookie_file.read_bytes())
+    else:
+        cookies = {}
+    sess_main = httpx.Client(headers=headers, cookies=cookies.get('main'))
+    sess_alt = httpx.Client(headers=headers, cookies=cookies.get('alt'))
+    return sess_main, sess_alt
 
 
 class Fetcher:
     def __init__(self):
-        self.sess_main, self.sess_alt = _get_session(), _get_session()
-        self.load_cookie()
+        self.sess_main, self.sess_alt = _get_session()
         self._alt_login = None
         with Path(__file__).with_name('X-Bogus.js').open() as fp:
             ENV_NODE_JS = Path(__file__).resolve().parent.parent
@@ -71,14 +78,6 @@ class Fetcher:
         console.log(
             f'fetcher: current logined as {nickname} (is_alt:{on})',
             style='green on dark_green')
-
-    def load_cookie(self):
-        cookie_file = Path(__file__).with_name('cookie.pkl')
-        if not cookie_file.exists():
-            return
-        cookies = pickle.loads(cookie_file.read_bytes())
-        self.sess_main.cookies = cookies['main']
-        self.sess_alt.cookies = cookies['alt']
 
     def login(self, alt_login: bool = False):
         session = self.sess_alt if alt_login else self.sess_main
@@ -139,10 +138,9 @@ class Fetcher:
 
         while True:
             try:
-                r = session.get(url)
+                r = session.get(str(url))
                 r.raise_for_status()
-            except (requests.exceptions.ConnectionError,
-                    requests.exceptions.HTTPError) as e:
+            except httpx.HTTPError as e:
                 period = 60
                 console.log(
                     f"{e}: Sleepping {period} seconds and "
@@ -192,7 +190,7 @@ class Fetcher:
 
 
 fetcher = Fetcher()
-sess = requests.Session()
+sess = httpx.Client()
 sess.get('https://www.douyin.com/', headers={'User-Agent': UA})
 
 
@@ -214,7 +212,7 @@ def download_single_file(
     while True:
         try:
             r = sess.get(url, headers={'User-Agent': UA})
-        except ConnectionError as e:
+        except httpx.HTTPError as e:
             period = 60
             console.log(
                 f"{e}: Sleepping {period} seconds and "
