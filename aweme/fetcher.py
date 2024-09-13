@@ -1,7 +1,6 @@
 import hashlib
 import json
 import logging
-import pickle
 import random
 import re
 import time
@@ -42,9 +41,9 @@ def _get_session():
         "accept-encoding": "gzip, deflate, br",
         "accept-language": "en-US,en;q=0.9,zh-CN;q=0.8,zh;q=0.7",
     }
-    cookie_file = Path(__file__).with_name('cookie.pkl')
+    cookie_file = Path(__file__).with_name('cookie.json')
     if cookie_file.exists():
-        cookies = pickle.loads(cookie_file.read_bytes())
+        cookies = json.loads(cookie_file.read_text())
     else:
         cookies = {}
     sess_main = httpx.Client(headers=headers, cookies=cookies.get('main'))
@@ -82,7 +81,8 @@ class Fetcher:
     def login(self, alt_login: bool = False):
         session = self.sess_alt if alt_login else self.sess_main
         while True:
-            r = session.get('https://www.douyin.com/user/self')
+            r = self.get('https://www.douyin.com/user/self',
+                         alt_login=alt_login)
             soup = BeautifulSoup(unquote(r.text), 'html.parser')
             for s in soup.find_all('script'):
                 if 'realname' not in str(s).lower():
@@ -106,15 +106,14 @@ class Fetcher:
         browser = webdriver.Chrome()
         browser.get('https://www.douyin.com/')
         input('press enter after login...')
-        for cookie in browser.get_cookies():
-            for k in ['expiry', 'httpOnly', 'sameSite']:
-                cookie.pop(k, None)
-            session.cookies.set(**cookie)
+        session.cookies = {c['name']: c['value']
+                           for c in browser.get_cookies()}
         browser.quit()
-        cookie_file = Path(__file__).with_name('cookie.pkl')
-        cookies = {'main': self.sess_main.cookies,
-                   'alt': self.sess_alt.cookies}
-        cookie_file.write_bytes(pickle.dumps(cookies))
+        cookie_file = Path(__file__).with_name('cookie.json')
+        cookies = dict(
+            main={c.name: c.value for c in self.sess_main.cookies.jar},
+            alt={c.name: c.value for c in self.sess_alt.cookies.jar})
+        cookie_file.write_text(json.dumps(cookies))
 
     def _get_xbogus(self, params: dict | str) -> str:
         assert 'X-Bogus' not in params, 'X-Bogus in params'
