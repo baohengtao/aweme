@@ -4,7 +4,6 @@ import logging
 import random
 import re
 import time
-from collections import deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 from typing import Iterable
@@ -63,7 +62,6 @@ class Fetcher:
         self._visit_count = 0
         self._last_fetch = time.time()
         self.enable_pause = True
-        self.deque = deque(maxlen=5)
 
     @property
     def alt_login(self):
@@ -155,17 +153,15 @@ class Fetcher:
             self._visit_count = 1
             self._last_fetch = time.time()
             return
-        for flag in [2048, 1024, 256, 64, 32]:
+        for flag in [2048, 1024, 256, 64, 32, 16]:
             if self._visit_count % flag == 0:
                 sleep_time = flag * 2
                 break
         else:
-            sleep_time = 32
+            sleep_time = 4
 
         sleep_time *= random.uniform(0.75, 1.25)
         self._last_fetch += sleep_time
-        if len(self.deque) == 5:
-            self._last_fetch = max(self._last_fetch, self.deque[0]+300)
         if (wait_time := (self._last_fetch-time.time())) > 0:
             console.log(
                 f'sleep {wait_time:.1f} seconds...'
@@ -184,13 +180,11 @@ class Fetcher:
         while time.time() < self._last_fetch:
             time.sleep(0.1)
         self._last_fetch = time.time()
-        self.deque.append(self._last_fetch)
         self._visit_count += 1
 
 
 fetcher = Fetcher()
-sess = httpx.Client()
-sess.get('https://www.douyin.com/', headers={'User-Agent': UA})
+sess = httpx.Client(follow_redirects=True)
 
 
 def download_single_file(
@@ -208,7 +202,7 @@ def download_single_file(
         return
     else:
         console.log(f'downloading {img}...', style="dim")
-    while True:
+    for _ in range(10):
         try:
             r = sess.get(url, headers={'User-Agent': UA})
         except httpx.HTTPError as e:
@@ -222,12 +216,9 @@ def download_single_file(
         if r.status_code == 404:
             console.log(
                 f"404 with normal fetch, using fetcher:{url}", style="info")
-            r = fetcher.session.get(url)
+            r = fetcher.sess_main.get(url)
             time.sleep(30)
             assert r.status_code == 200
-            # console.log(
-            #     f"{url}, {xmp_info}, {r.status_code}", style="error")
-            # return
         elif r.status_code != 200:
             console.log(f"{url}, {r.status_code}", style="error")
             time.sleep(15)
@@ -258,6 +249,8 @@ def download_single_file(
         if xmp_info:
             write_xmp(img, xmp_info)
         break
+    else:
+        raise ValueError(f'failed to download {url}')
 
 
 def download_files(imgs: Iterable[dict]):
