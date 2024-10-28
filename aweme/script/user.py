@@ -39,6 +39,7 @@ def user_add(max_user: int = 20,
                       in islice(page.get_following(), max_user)]
     to_add = [uid for uid in uids_following if uid not in uids]
     if max_user is None:
+        console.log(f'{len(uids_following)} user followed')
         if uids := uids - set(uids_following):
             raise ValueError(f'there are uids {uids} not in following list')
     console.log(f'{len(to_add)} users will be added')

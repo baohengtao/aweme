@@ -229,7 +229,10 @@ def download_single_file(
             console.log(f"empty response for {url}", style="error")
             time.sleep(15)
             console.log(f'retrying download for {url}...')
-            sess.get('https://www.douyin.com/', headers={'User-Agent': UA})
+            try:
+                sess.get('https://www.douyin.com/', headers={'User-Agent': UA})
+            except httpx.HTTPError:
+                pass
             continue
 
         if int(r.headers['Content-Length']) != len(r.content):

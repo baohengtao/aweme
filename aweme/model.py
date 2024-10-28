@@ -109,6 +109,7 @@ class User(BaseModel):
             if not model or user_dict['following'] == model.following:
                 break
         else:
+            console.log(model)
             if model.following and not Confirm.ask(
                     f'{model.username} unfollowed?'):
                 raise ValueError
@@ -138,11 +139,15 @@ class User(BaseModel):
             cls.insert(user_dict).execute()
             return cls.get_by_id(user_id)
         model_dict = model_to_dict(model)
+        skiped_keys = {
+            'follower_count', 'max_follower_count', 'aweme_count',
+            'following_count', 'favoriting_count',
+            'mplatform_followers_count', 'total_favorited',
+            'unknown_fields',
+        }
         for k, v in user_dict.items():
             assert v or v == 0 or k == 'unknown_fields'
-            if k in ['follower_count', 'max_follower_count', 'aweme_count',
-                     'following_count', 'favoriting_count',
-                     'mplatform_followers_count', 'total_favorited',]:
+            if k in skiped_keys:
                 continue
             if v == model_dict[k]:
                 continue
@@ -572,6 +577,8 @@ class Post(BaseModel):
         for k, v in aweme_dict.items():
             assert v or v == 0 or k == 'unknown_fields'
             if (ori := model_dict[k]) == v or k in ['img_urls', 'video_url']:
+                continue
+            if k in ['collect_count', 'comment_count', 'digg_count', 'share_count']:
                 continue
             if k == 'unknown_fields':
                 continue

@@ -70,7 +70,10 @@ def parse_aweme(aweme):
         'duet_origin_item', 'duet_origin_item_id',
         'guide_scene_info', 'should_open_ad_report', 'is_share_post',
         'report_action', 'comment_words_recommend', 'common_bar_info',
-        'is_ads', 'aweme_acl',
+        'is_ads', 'aweme_acl', 'publish_plus_alienation', 'hot_list',
+        'life_anchor_show_extra', 'chapter_list', 'video_share_edit_status',
+        'flash_mob_trends', 'is_24_story', 'friend_interaction',
+        'personal_page_botton_diagnose_style',
     ]
     for key in useless_keys_opt:
         aweme.pop(key, None)
@@ -140,7 +143,7 @@ def parse_aweme(aweme):
     media = process_media(aweme.pop('images'), aweme.pop('video'))
     assert result | media == media | result
     result |= media
-    assert aweme.pop('media_type') == (4 if result['is_video'] else 2)
+    assert aweme.pop('media_type') in ([4] if result['is_video'] else [2, 42])
     try:
         result['aweme_type'] = {
             0: 'GENERAL',
@@ -231,7 +234,7 @@ def process_media(img_list, vid_dict):
     img_urls = [img['url_list'][0] for img in img_list]
     vid_dict.pop('big_thumbs')
     assert vid_dict.pop('bit_rate_audio') is None
-    assert vid_dict.pop('cover')['uri'] in img_ids
+    vid_dict.pop('cover')
     assert vid_dict.pop('origin_cover')['uri']
     assert vid_dict.pop('play_addr')
     assert vid_dict.pop('duration') == 0
@@ -252,7 +255,8 @@ def process_media_for_vid(vid_dict):
               'dynamic_cover', 'meta', 'height', 'width',
               'big_thumbs', 'misc_download_addrs', 'cover_original_scale',
               'animated_cover', 'use_static_cover', 'optimized_cover',
-              'horizontal_type', 'is_h265', 'cdn_url_expired', 'bit_rate_audio'
+              'horizontal_type', 'is_h265', 'cdn_url_expired', 'bit_rate_audio',
+              'audio', 'raw_cover',
               ]:
         vid_dict.pop(k, None)
 
