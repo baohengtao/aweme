@@ -12,7 +12,7 @@ from typer import Option, Typer
 
 from aweme import console
 from aweme.fetcher import fetcher
-from aweme.model import User, UserConfig
+from aweme.model import Cache, User, UserConfig
 from aweme.page import Page
 
 from .helper import LogSaver, default_path, logsaver_decorator, print_command
@@ -188,7 +188,9 @@ def clean_database():
             console.log(n, '\n')
 
         if Confirm.ask(f'是否删除{u.username}({u.id})？', default=False):
-            for n in itertools.chain(u.posts, u.artist):
+            caches = Cache.select().where(Cache.user_id == u.id)
+            assert len(caches) == len(u.posts)
+            for n in itertools.chain(u.posts, u.artist, caches):
                 n.delete_instance()
             u.delete_instance()
             console.log(f'用户{u.username}已删除')
