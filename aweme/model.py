@@ -114,7 +114,9 @@ class User(BaseModel):
                     f'{model.username} unfollowed?'):
                 raise ValueError
         if not model:
-            assert user_dict['following'] is True
+            if not user_dict['following']:
+                console.log(f'{user_id} is not following', style='error')
+                console.log(user_dict)
         return cls.upsert(user_dict)
 
     @classmethod
@@ -440,6 +442,9 @@ class Cache(BaseModel):
             aweme['added_at'] = self.added_at
         return aweme
 
+    def __repr__(self):
+        return super().__repr__()
+
     @classmethod
     def upsert(cls, aweme: dict) -> Self:
         aweme_id, user_id = aweme['aweme_id'], aweme['author_user_id']
@@ -607,6 +612,9 @@ class Post(BaseModel):
         for sn, (img_id, url) in enumerate(
                 zip(self.img_ids, self.img_urls), start=1):
             assert img_id in url
+            if url == '':
+                console.log(f'cannot get url of {sn}th img', style='error')
+                continue
             yield {
                 'url': url,
                 'filename': f'{prefix}_{sn}.webp',

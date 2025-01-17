@@ -231,7 +231,7 @@ def process_media(img_list, vid_dict):
     if img_list is None:
         return process_media_for_vid(vid_dict)
     img_ids = [img['uri'] for img in img_list]
-    img_urls = [img['url_list'][0] for img in img_list]
+    img_urls = [(img['url_list'] or [''])[0] for img in img_list]
     vid_dict.pop('big_thumbs')
     assert vid_dict.pop('bit_rate_audio') is None
     vid_dict.pop('cover')

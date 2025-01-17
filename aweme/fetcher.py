@@ -119,7 +119,8 @@ class Fetcher:
             params = urlencode(params)
         return self.js_func.call('sign', params, UA)
 
-    def get(self, url: str | furl, params: dict = None, alt_login: bool = None):
+    def get(self, url: str | furl, params: dict = None,
+            alt_login: bool | None = None):
         if alt_login is None:
             if self.alt_login is None:
                 raise ValueError('alt_login is not set')
@@ -216,7 +217,7 @@ def download_single_file(
         if r.status_code == 404:
             console.log(
                 f"404 with normal fetch, using fetcher:{url}", style="info")
-            r = fetcher.sess_main.get(url)
+            r = fetcher.sess_main.get(url, follow_redirects=True)
             time.sleep(30)
             assert r.status_code == 200
         elif r.status_code != 200:
