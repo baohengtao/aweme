@@ -75,7 +75,9 @@ def user_loop(frequency: float = 2,
                                  UserConfig.id)):
             console.log(
                 f'total {configs.count()} new users found, fetching...')
-        elif configs := query.where(UserConfig.aweme_next_fetch < pendulum.now()):
+        elif ((configs := query.where(
+                UserConfig.aweme_next_fetch < pendulum.now()))
+                and len(configs) >= 5):
             console.log(
                 f' {len(configs)} users satisfy fetching conditions, '
                 'Fetching 10 users whose estimated new posts is most.')
@@ -159,8 +161,9 @@ def user(download_dir: Path = default_path):
         if user := (User.get_or_none(username=user_id)
                     or User.get_or_none(sec_uid=user_id)):
             user_id = user.id
-        if uc := UserConfig.get_or_none(user_id=user_id):
-            console.log(f'用户{uc.username}已在列表中')
+        if isinstance(user_id, int):
+            if uc := UserConfig.get_or_none(user_id=user_id):
+                console.log(f'用户{uc.username}已在列表中')
         uc = UserConfig.from_id(user_id)
         console.log(uc)
         uc.aweme_fetch = Confirm.ask(f"是否获取{uc.username}的主页？", default=True)

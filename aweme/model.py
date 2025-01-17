@@ -227,7 +227,8 @@ class UserConfig(BaseModel):
             assert is_top in [0, 1]
             is_tops.append(is_top)
             aweme = Cache.upsert(aweme).parse()
-            if (create_time := aweme['create_time']) < since:
+            aweme = Post.upsert(aweme)
+            if (create_time := aweme.create_time) < since:
                 if is_top:
                     console.log('skip top aweme')
                     continue
@@ -235,7 +236,6 @@ class UserConfig(BaseModel):
                     console.log(f'time {create_time:%y-%m-%d} is before '
                                 f'{since:%y-%m-%d}, finished!')
                     break
-            aweme = Post.upsert(aweme)
             yield aweme
         assert sorted(is_tops, reverse=True) == is_tops
 
@@ -586,6 +586,9 @@ class Post(BaseModel):
             if k in ['collect_count', 'comment_count', 'digg_count', 'share_count']:
                 continue
             if k == 'unknown_fields':
+                continue
+            if k == 'updated_at':
+                assert not model_dict[k] or v > model_dict[k]
                 continue
             console.log(f'+{k}: {v}', style='green bold on dark_green')
             if ori is not None:
