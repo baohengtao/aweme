@@ -134,15 +134,26 @@ class Fetcher:
         url.args.pop('X-Bogus', None)
         url.args['X-Bogus'] = self._get_xbogus(url.query.encode())
 
+        try_time = 0
         while True:
             try:
                 r = session.get(str(url))
                 r.raise_for_status()
+            except (httpx.ConnectTimeout, httpx.ConnectTimeout):
+                console.log('seems offline...sleep 10 secs', style='error')
+                time.sleep(10)
+            except httpx.PoolTimeout:
+                console.log('pool timeout... sleep 10 secs', style='error')
+                time.sleep(10)
             except httpx.HTTPError as e:
                 period = 60
+                try_time += 1
+                if try_time > 10:
+                    raise
                 console.log(
-                    f"{e}: Sleepping {period} seconds and "
-                    f"retry [link={url}]{url}[/link]...", style='error')
+                    f"{e}: Sleep {period} seconds and "
+                    f"retry [link={url}]{url}[/link] at {try_time}th times",
+                    style='error')
                 time.sleep(period)
             else:
                 assert r.status_code == 200
